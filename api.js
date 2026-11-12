@@ -1,5 +1,5 @@
 // ==========================================
-// 阶段一：终端核心配置、10w Token 滑动窗口与 API 通信层 (v1.6 换肤引擎底座版)
+// 阶段一：终端核心配置、10w Token 滑动窗口与 API 通信层 (v1.7 豆包官方原生兼容版)
 // ==========================================
 
 const STORAGE_KEYS = {
@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
   proactive: 'on', proactiveMax: 5, proactiveInterval: '15-45', systemPrompt: '',
   userName: 'USER', aiName: 'AI',
   userAvatar: DEFAULT_AVATAR, aiAvatar: DEFAULT_AVATAR,
-  theme: 'tactical-green' // 新增：默认主题标识
+  theme: 'tactical-green'
 };
 
 function getConfig() {
@@ -28,9 +28,15 @@ function saveConfig(newConfig) {
   updateTopBarMetrics();
 }
 
-// ==========================================
-// 🌟 换肤引擎核心：将主题标识挂载到顶层 DOM
-// ==========================================
+// 🌟 智能规范化接口地址（完美兼容普通 /v1 接口 与 豆包火山方舟 /v3 接口）
+function normalizeBaseUrl(rawHost) {
+  let baseUrl = (rawHost || '').trim().replace(/\/+$/, '');
+  if (!baseUrl.endsWith('/v1') && !baseUrl.endsWith('/v3')) {
+    baseUrl += '/v1';
+  }
+  return baseUrl;
+}
+
 let selectedThemeId = 'tactical-green';
 
 function applyTheme(themeId) {
@@ -39,7 +45,6 @@ function applyTheme(themeId) {
   document.documentElement.setAttribute('data-theme', targetTheme);
   document.body.setAttribute('data-theme', targetTheme);
 
-  // 同步更新设置弹窗里的卡片高亮状态
   document.querySelectorAll('.theme-card').forEach(card => {
     if (card.dataset.themeId === targetTheme) {
       card.classList.add('active');
@@ -49,7 +54,6 @@ function applyTheme(themeId) {
   });
 }
 
-// 网页刚加载时立刻执行一次，防止页面闪烁
 (function initThemeImmediately() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONFIG) || '{}');
@@ -116,8 +120,7 @@ function updateTopBarMetrics() {
 async function callTacticalAPI(messages) {
   const cfg = getConfig();
   if (!cfg.apiHost || !cfg.apiKey) throw new Error('未配置 API 主机地址或秘钥。');
-  let baseUrl = cfg.apiHost.trim().replace(/\/+$/, '');
-  if (!baseUrl.endsWith('/v1')) baseUrl += '/v1';
+  const baseUrl = normalizeBaseUrl(cfg.apiHost);
   
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -151,14 +154,12 @@ function compressImage(file, callback) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. 初始化应用当前保存的主题皮肤
   const initialCfg = getConfig();
   applyTheme(initialCfg.theme || 'tactical-green');
 
   const modal = document.getElementById('settings-modal');
   const testResultEl = document.getElementById('api-test-result');
 
-  // 2. 标签页切换逻辑
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
   tabBtns.forEach(btn => {
@@ -170,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 3. 皮肤卡片点击事件代理（支持实时预览，未来新增卡片无需改 JS）
   const themeGrid = document.getElementById('theme-selector-grid');
   if (themeGrid) {
     themeGrid.addEventListener('click', (e) => {
@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.id; select.appendChild(opt);
     });
     if (selectedModel && !modelsArray.find(m => m.id === selectedModel)) {
-      const opt = document.createElement('option'); opt.value = selectedModel; opt.textContent = selectedModel + ' (自定义)'; select.appendChild(opt);
+      const opt = document.createElement('option'); opt.value = selectedModel; opt.textContent = selectedModel; select.appendChild(opt);
     }
     select.value = selectedModel || '';
   }
@@ -238,7 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('open-settings-btn')?.addEventListener('click', () => { loadForm(); modal.classList.remove('hidden'); });
   
-  // 关闭弹窗时若未点保存，自动恢复回已保存的正式主题
   document.getElementById('close-settings-btn')?.addEventListener('click', () => {
     applyTheme(getConfig().theme || 'tactical-green');
     modal.classList.add('hidden');
@@ -251,18 +250,38 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => { modal.classList.add('hidden'); window.location.reload(); }, 600);
   });
 
+  // 🌟 升级检索按钮：如果接口不支持自动拉取列表（比如豆包官方），直接弹窗让你输入 ep- 接入点 ID
   document.getElementById('fetch-models-btn')?.addEventListener('click', async () => {
     const host = document.getElementById('cfg-api-host').value.trim();
     const key = document.getElementById('cfg-api-key').value.trim();
-    if (!host || !key) return;
+    if (!host || !key) return alert('请先填写 API 主机地址和秘钥！');
+    
+    const baseUrl = normalizeBaseUrl(host);
+    testResultEl.style.color = '#d4a359';
+    testResultEl.textContent = '📡 正在检索模型列表...';
+
     try {
-      let baseUrl = host.replace(/\/+$/, '');
-      if (!baseUrl.endsWith('/v1')) baseUrl += '/v1';
       const response = await fetch(`${baseUrl}/models`, { headers: { 'Authorization': `Bearer ${key}` } });
-      if (!response.ok) throw new Error('获取失败');
+      if (!response.ok) throw new Error('不支持自动检索');
       const data = await response.json();
-      if (data.data && Array.isArray(data.data)) populateModelSelect(data.data, document.getElementById('cfg-model').value);
-    } catch (err) {}
+      if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+        populateModelSelect(data.data, document.getElementById('cfg-model').value || data.data[0].id);
+        testResultEl.style.color = '#38b27b';
+        testResultEl.textContent = `✓ 成功获取 ${data.data.length} 个模型！`;
+      } else {
+        throw new Error('列表为空');
+      }
+    } catch (err) {
+      // 豆包官方走这里：直接弹出输入框让你粘贴 ep- 接入点 ID
+      const manualId = prompt('当前接口不支持自动检索列表（豆包/火山方舟请直接粘贴你的接入点 ID，例如 ep-2026xxxx-xxxxx）：', document.getElementById('cfg-model').value);
+      if (manualId && manualId.trim()) {
+        populateModelSelect([{ id: manualId.trim() }], manualId.trim());
+        testResultEl.style.color = '#38b27b';
+        testResultEl.textContent = `✓ 已手动设定模型/接入点: ${manualId.trim()}`;
+      } else {
+        testResultEl.textContent = '等待配置校验...';
+      }
+    }
   });
 
   document.getElementById('test-api-btn')?.addEventListener('click', async () => {
@@ -321,8 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function callTacticalStreamAPI(messages, onChunk) {
   const cfg = getConfig();
-  let baseUrl = cfg.apiHost.trim().replace(/\/+$/, '');
-  if (!baseUrl.endsWith('/v1')) baseUrl += '/v1';
+  const baseUrl = normalizeBaseUrl(cfg.apiHost);
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey.trim()}` },
