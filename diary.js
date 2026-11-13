@@ -211,4 +211,27 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     checkAutoYesterdayDiary();
   }, 2500);
+  // 绑定日记 TXT 导出功能
+  const exportDiaryBtn = document.getElementById('export-diary-btn');
+  if (exportDiaryBtn) {
+    exportDiaryBtn.addEventListener('click', () => {
+      const diaries = getDiaryArchives();
+      if (diaries.length === 0) return alert('暂无日记可导出。');
+      
+      let txtContent = '【终端日记档案汇总】\n\n';
+      diaries.forEach(d => {
+        txtContent += `=================================\n`;
+        txtContent += `日期: ${d.dateKey} (${d.displayDate})\n`;
+        txtContent += `摘要: ${d.summary}\n`;
+        txtContent += `---------------------------------\n`;
+        txtContent += `${d.content}\n\n\n`;
+      });
+      
+      const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Ezekiel_Diaries_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.txt`;
+      a.click();
+    });
+  }
 });

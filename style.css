@@ -383,22 +383,95 @@ input:focus, textarea:focus, select:focus {
   font-size: 15px;
 }
 
-/* 手机端自适应：自动切换为单列上下顺延布局 */
+/* 手机端自适应：自动切换为单列上下顺延布局，并修复拥挤问题 */
 @media (max-width: 820px) {
   body {
     height: auto;
     min-height: 100dvh;
-    overflow-y: auto;
+    overflow-y: auto; /* 解除高度限制，变成自然滚动的长页面 */
+    padding-bottom: 30px; /* 底部留出呼吸空间 */
   }
+  
   .tactical-grid {
     grid-template-columns: 1fr;
     overflow: visible;
+    gap: 16px;
   }
+
+  /* 修复：给每个模块留出合理的高度和空间，不再被挤扁 */
   .right-col #panel-chat {
-    min-height: 380px;
+    height: 60vh; /* 聊天框固定占屏幕高度的 60%，内部自己滚动，不干扰外层页面 */
+    min-height: 450px; 
   }
+  
+  #panel-diary, #panel-reading, #panel-mood, #panel-tasks {
+    min-height: auto;
+    height: auto; /* 高度根据内容自然撑开 */
+  }
+
   .right-col .sub-grid, .form-row {
     grid-template-columns: 1fr;
+  }
+  
+  /* 修复1：顶部状态栏字号微调，防止换行 */
+  .terminal-brand .brand-title {
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+  .terminal-metrics .metric-item {
+    font-size: 10px;
+  }
+
+  /* 修复2：通讯面板标题栏允许换行（Flex Wrap） */
+  #panel-chat .panel-header {
+    height: auto; 
+    min-height: 38px;
+    flex-wrap: wrap; /* 核心魔法：放不下就自动换到下一行 */
+    padding: 6px 12px;
+    gap: 6px;
+  }
+  #panel-chat .panel-header h2 {
+    width: 100%; /* 强制标题占满第一行 */
+    margin-bottom: 4px;
+  }
+  #panel-chat .panel-header .mini-btn {
+    flex: 1; /* 第二行的按钮等宽平分 */
+    text-align: center;
+    padding: 4px 0;
+  }
+
+  /* 修复3：聊天输入框改为上下两排，彻底解决手指点不到的问题 */
+  .chat-input-row {
+    flex-wrap: wrap; /* 允许换行 */
+    gap: 8px;
+    padding: 8px;
+  }
+  
+  /* 第一排：输入框占满全宽 */
+  #quick-test-input {
+    width: 100%;
+    order: 1; /* 排在最上面 */
+    font-size: 14px; /* 手机上字大点好点 */
+    padding: 10px 12px;
+  }
+  
+  /* 第二排：表情和图片按钮靠左 */
+  #open-sticker-btn {
+    order: 2;
+    flex-shrink: 0;
+  }
+  #upload-chat-img-btn {
+    order: 3;
+    flex-shrink: 0;
+  }
+  
+  /* 第二排：发送按钮靠右，并且又大又宽 */
+  #quick-send-btn {
+    order: 4;
+    flex: 1; /* 占据剩下的所有宽度 */
+    text-align: center;
+    font-size: 14px;
+    padding: 8px 0;
   }
 }
 /* ==========================================

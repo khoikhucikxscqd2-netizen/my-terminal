@@ -29,6 +29,7 @@
        <div class="panel-header">
           <span class="panel-tag">[LOG-01]</span>
           <h2>日记存档 // ARCHIVES</h2>
+          <button class="mini-btn" id="export-diary-btn" title="导出全部日记为TXT格式">📥 导出</button>
           <button class="mini-btn" id="archive-today-btn" title="立即将今日互动汇总归档为日记">✍ 归档今日</button>
         </div>
         <div class="panel-body placeholder-box" id="diary-container">
@@ -76,11 +77,13 @@
             <div class="chat-messages" id="chat-messages">
               <div class="sys-msg">// 加密信道已就绪。</div>
             </div>
-            <div class="chat-input-row">
-              <button class="icon-btn" id="open-sticker-btn" title="展开/收起表情包面板">😀 表情</button>
-              <input type="text" id="quick-test-input" placeholder="输入聊天内容或指令..." autocomplete="off">
-              <button class="tac-btn primary" id="quick-send-btn">发送</button>
-            </div>
+          <div class="chat-input-row">
+            <button class="icon-btn" id="open-sticker-btn" title="展开/收起表情包面板">😀 表情</button>
+            <input type="file" id="upload-chat-img-input" accept="image/*" style="display: none;">
+            <button class="icon-btn" id="upload-chat-img-btn" title="发送本地图片">📎 图片</button>
+            <input type="text" id="quick-test-input" placeholder="输入文字，可图文并茂..." autocomplete="off">
+            <button class="tac-btn primary" id="quick-send-btn">发送</button>
+          </div>
           </div>
 
           <!-- 右侧：本地表情包库 -->
@@ -324,8 +327,8 @@
       <div class="panel-header modal-header">
         <span class="panel-tag">[NOTES-ARCHIVE]</span>
         <h2>书摘档案库 // EXTRACTS</h2>
-        <button class="close-btn" id="close-extracts-btn">✕</button>
-      </div>
+        <button class="mini-btn" id="export-extracts-btn" style="margin-right: 15px;" title="导出全部书摘为TXT格式">📥 导出</button>
+        <button class="close-btn" id="close-extracts-btn">✕</button>      </div>
       <div class="modal-body" id="extracts-list-container" style="max-height: 60vh; overflow-y: auto;"></div>
     </div>
   </div>

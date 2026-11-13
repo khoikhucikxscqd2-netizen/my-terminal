@@ -451,5 +451,28 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('close-extracts-btn').addEventListener('click', () => {
     extractsModal.classList.add('hidden');
+    // 绑定书摘 TXT 导出功能
+  const exportExtractsBtn = document.getElementById('export-extracts-btn');
+  if (exportExtractsBtn) {
+    exportExtractsBtn.addEventListener('click', () => {
+      const extracts = JSON.parse(localStorage.getItem(EXTRACTS_KEY) || '[]');
+      if (extracts.length === 0) return alert('暂无书摘可导出。');
+      
+      let txtContent = '【终端书摘档案汇总】\n\n';
+      extracts.forEach(e => {
+        txtContent += `=================================\n`;
+        txtContent += `来源: 《${e.bookTitle}》\n`;
+        txtContent += `日期: ${e.date}\n`;
+        txtContent += `---------------------------------\n`;
+        txtContent += `${e.content}\n\n\n`;
+      });
+      
+      const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Ezekiel_Extracts_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.txt`;
+      a.click();
+    });
+  }
   });
 });

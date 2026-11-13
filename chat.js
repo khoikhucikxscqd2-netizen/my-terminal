@@ -35,23 +35,22 @@ function formatMsgTime(ts) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-// 保护表情包和像素画标签在切分气泡时不被切碎
+// 保护表情包、像素画和本地图片标签在切分气泡时不被切碎
 function splitIntoBubbles(text) {
   const placeholders = [];
   let tempText = text.replace(/\[SKETCH:\s*([\s\S]*?)\s*\]/g, (match) => {
-    placeholders.push(match);
-    return `__PLACEHOLDER_${placeholders.length - 1}__`;
+    placeholders.push(match); return `__PLACEHOLDER_${placeholders.length - 1}__`;
   });
   tempText = tempText.replace(/\[表情包:\s*([^\|]+)\s*\|\s*id:([^\]]+)\]/g, (match) => {
-    placeholders.push(match);
-    return `__PLACEHOLDER_${placeholders.length - 1}__`;
+    placeholders.push(match); return `__PLACEHOLDER_${placeholders.length - 1}__`;
+  });
+  // 新增：保护本地图标记
+  tempText = tempText.replace(/\[LOCAL_IMG:\s*([^\]]+)\]/g, (match) => {
+    placeholders.push(match); return `__PLACEHOLDER_${placeholders.length - 1}__`;
   });
 
   const parts = tempText.split(/\n+/).map(p => p.trim()).filter(p => p.length > 0);
-
-  return parts.map(part => {
-    return part.replace(/__PLACEHOLDER_(\d+)__/g, (match, idx) => placeholders[idx]);
-  });
+  return parts.map(part => part.replace(/__PLACEHOLDER_(\d+)__/g, (match, idx) => placeholders[idx]));
 }
 
 function formatMessageContent(text) {
@@ -61,13 +60,16 @@ function formatMessageContent(text) {
   safeText = safeText.replace(/\[表情包:\s*([^\|]+)\s*\|\s*id:([^\]]+)\]/g, (match, name, id) => {
     const stickers = JSON.parse(localStorage.getItem(STICKERS_KEY) || '[]');
     const s = stickers.find(x => x.id === id.trim());
-    if (s) {
-      return `<img src="${s.img}" alt="${name}" class="chat-sticker-img" title="${name}">`;
-    }
+    if (s) return `<img src="${s.img}" alt="${name}" class="chat-sticker-img" title="${name}">`;
     return `<div class="sys-msg" style="display:inline-block; padding:2px 6px;">[图片已失效: ${name}]</div>`;
   });
 
-  // 2. 渲染 AI 回复的 24x24 像素画
+  // 2. 新增：渲染本地上传的实拍图（带点边框更好看）
+  safeText = safeText.replace(/\[LOCAL_IMG:\s*([^\]]+)\]/g, (match, base64) => {
+    return `<img src="${base64}" class="chat-sticker-img" style="max-width: 180px; border: 1px solid var(--border-bright);">`;
+  });
+
+  // 3. 渲染 AI 回复的 24x24 像素画
   return safeText.replace(/\[SKETCH:\s*([\s\S]*?)\s*\]/g, (match, rawGrid) => {
     const lines = rawGrid.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length >= 8 && /^[█·10#.\s]+$/.test(lines.join(''))) {
@@ -148,26 +150,44 @@ function renderAllChatHistory() {
   const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
   if (history.length > 0) {
     chatBox.innerHTML = '';
-    history.forEach(msg => appendMessageBubble(msg.role, msg.content, msg.time, msg.isProactive, true));
+    history.forEach(msg => {
+      // 视觉欺骗：如果在本地有缓存的实拍图，拼接到界面上渲染，但这串超长乱码绝对不喂给API上下文
+      let displayContent = msg.content;
+      if (msg.localImage) displayContent += `\n[LOCAL_IMG:${msg.localImage}]`;
+      appendMessageBubble(msg.role, displayContent, msg.time, msg.isProactive, true);
+    });
   }
 }
 
-// 🌟 核心修复：把隐形法则全部“绑架”到最后一条用户消息里，确保API接口多模态格式不崩溃
+// 🌟 核心修复：多模态分离式发送引擎
 async function sendUserChatMessage(customText = null, imageBase64 = null) {
   if (isGenerating) return;
   const inputEl = document.getElementById('quick-test-input');
   const text = customText || inputEl.value.trim();
-  if (!text) return;
+  if (!text && !imageBase64) return; // 允许什么字都不打，只发一张图片
 
   if (!customText) inputEl.value = '';
   isGenerating = true;
   resetProactiveTimer();
 
   const now = Date.now();
-  appendMessageBubble('user', text, now, false, true);
+  
+  // 1. 界面显示处理 (用户发出的瞬间，气泡里要看到图)
+  let displayContent = text;
+  if (imageBase64 && !customText?.includes('[表情包:')) {
+    displayContent = text ? `${text}\n[LOCAL_IMG:${imageBase64}]` : `[LOCAL_IMG:${imageBase64}]`;
+  }
+  appendMessageBubble('user', displayContent, now, false, true);
 
+  // 2. 本地存储处理 (只存短文字，把Base64单独挂在 localImage 字段！这样历史记录干干净净！)
   const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
-  history.push({ role: 'user', content: text, time: now });
+  let contentForHistory = text;
+  if (imageBase64 && !customText?.includes('[表情包:')) {
+    contentForHistory = text || '[发送了一张图片]';
+    history.push({ role: 'user', content: contentForHistory, time: now, localImage: imageBase64 });
+  } else {
+    history.push({ role: 'user', content: contentForHistory, time: now });
+  }
   localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(history));
   updateTopBarMetrics();
 
@@ -175,6 +195,7 @@ async function sendUserChatMessage(customText = null, imageBase64 = null) {
   const chatBox = document.getElementById('chat-messages');
 
   try {
+    // 3. 将携带真实 Base64 数据的请求发送给 API（底层 api.js 会看到图，但只在当次发送！）
     const { messages } = buildContextPayload('', imageBase64);
     
     let invisibleRules = `\n\n${CHAT_STYLE_RULE}`;
@@ -182,15 +203,12 @@ async function sendUserChatMessage(customText = null, imageBase64 = null) {
       invisibleRules += `\n（隐形指令：如果你此刻情绪到位、想哄对方或逗对方开心，可在回复末尾附带一个 24x24 的像素画矩阵，用 1 代表亮起像素、0 代表空白，共24行每行24个数字，并用 [SKETCH:\n...\n] 标签包裹，例如爱心、小动物、咖啡杯或笑脸。如果觉得此刻不适合画画，直接忽略此提示。）`;
     }
 
-    // 智能寻址：把规则拼接到最后一条消息里
     const lastMsg = messages[messages.length - 1];
     if (lastMsg && lastMsg.role === 'user') {
       if (Array.isArray(lastMsg.content)) {
-        // 如果是图文多模态格式，找到文字对象拼接
         const textObj = lastMsg.content.find(c => c.type === 'text');
         if (textObj) textObj.text += invisibleRules;
       } else {
-        // 如果是纯文本，直接拼接
         lastMsg.content += invisibleRules;
       }
     } else {
@@ -434,4 +452,48 @@ document.addEventListener('DOMContentLoaded', () => {
       updateTopBarMetrics();
     }
   });
+
+  // 绑定实拍图片发送功能
+  const chatImgBtn = document.getElementById('upload-chat-img-btn');
+  const chatImgInput = document.getElementById('upload-chat-img-input');
+  if (chatImgBtn && chatImgInput) {
+    chatImgBtn.addEventListener('click', () => chatImgInput.click());
+    chatImgInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          // 发给AI的图片需要适中大小（缩放到最长边 800px），太小AI看不清，太大卡顿
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const maxSize = 800;
+          let width = img.width; let height = img.height;
+          
+          if (width > height && width > maxSize) { 
+            height *= maxSize / width; width = maxSize; 
+          } else if (height > maxSize) { 
+            width *= maxSize / height; height = maxSize; 
+          }
+          
+          canvas.width = width; canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          const base64 = canvas.toDataURL('image/jpeg', 0.8);
+          
+          // 如果输入框里有字，就把字和图一起发过去；否则只发图
+          const inputEl = document.getElementById('quick-test-input');
+          const text = inputEl.value.trim();
+          inputEl.value = ''; 
+          
+          sendUserChatMessage(text || null, base64);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = ''; // 清空选中状态
+    });
+  }
 });
