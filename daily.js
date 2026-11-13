@@ -152,6 +152,11 @@ async function handleUserMoodChange(icon, label) {
     history.push({ role: 'assistant', content: cleanReply, time: Date.now(), isProactive: true });
     localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(history));
     updateTopBarMetrics();
+
+    // 🌟 新增：心情更新完毕后，偷偷抛骰子判定是否埋下盲盒
+    if (typeof rollForSecretCapsule === 'function') {
+      rollForSecretCapsule(label);
+    }
   } catch (err) {
     aiBubble.remove();
   } finally {

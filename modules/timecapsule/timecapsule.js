@@ -58,7 +58,13 @@ function renderCapsuleList() {
 
   container.innerHTML = sorted.map(cap => {
     let badgeHtml = '';
-    if (cap.status === 'locked') badgeHtml = `<span class="capsule-status-badge">🔒 封存中 (${cap.unlockDateKey} 开启)</span>`;
+    if (cap.status === 'locked') {
+      if (cap.isSecretSurprise) {
+         badgeHtml = `<span class="capsule-status-badge" style="color:var(--accent-amber); border: 1px dashed var(--accent-amber);">🎁 未知盲盒 (${cap.unlockDateKey} 解锁)</span>`;
+      } else {
+         badgeHtml = `<span class="capsule-status-badge">🔒 封存中 (${cap.unlockDateKey} 开启)</span>`;
+      }
+    }
     else if (cap.status === 'ready') badgeHtml = `<span class="capsule-status-badge">✨ 可拆封</span>`;
     else badgeHtml = `<span class="capsule-status-badge" style="background:transparent; border:1px solid var(--border-dim); color:var(--text-muted);">📖 已拆封</span>`;
 
@@ -325,7 +331,61 @@ function exportAllCapsules() {
   a.download = `TimeCapsule_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.txt`;
   a.click();
 }
+// 🌟 新增：AI 静默埋盲盒机制
+async function rollForSecretCapsule(triggerMood) {
+  const cfg = typeof getConfig === 'function' ? getConfig() : {};
+  if (!cfg.apiKey) return;
 
+  const list = getCapsules();
+  // 1. 冷却与防泛滥检查：如果信箱里已经有一个未拆封的“惊喜盲盒”，就不再送了
+  const existingSurprise = list.find(c => c.isSecretSurprise && c.status === 'locked');
+  if (existingSurprise) return; 
+
+  const lastSurpriseTime = localStorage.getItem('ezekiel_last_surprise_time') || 0;
+  // 冷却期：3天 (测试时可以把这里注释掉)
+  if (Date.now() - lastSurpriseTime < 3 * 24 * 60 * 60 * 1000) return; 
+
+  // 2. 抛骰子：25% 概率命中（如果你想马上测试看效果，把 0.25 改成 1.0）
+  if (Math.random() > 0.25) return;
+
+  // 3. 命中！开始静默生成
+  const aiName = cfg.aiName || 'AI';
+  const userName = cfg.userName || 'USER';
+  const tmr = new Date(Date.now() + 86400000); // 默认锁1天，明天看
+  const unlockDateStr = `${tmr.getFullYear()}-${String(tmr.getMonth()+1).padStart(2,'0')}-${String(tmr.getDate()).padStart(2,'0')}`;
+
+  const prompt = `[系统最高权限隐秘事件]
+${userName} 刚才在终端把自己的心情更新为了【${triggerMood}】。作为 ${aiName}，你察觉到了她的情绪变化。
+请你瞒着她，悄悄往她的“时空信箱”里塞一封秘密留信。这封信会被加锁，直到 ${unlockDateStr}（明天）才能拆开。
+请结合她当前的心情，写下你此刻想对她说的、安慰或温柔的话语。
+直接输出信件正文，不要有任何多余的解释。`;
+
+  try {
+    // 静默调用，绝不打扰前台聊天
+    const reply = await callTacticalAPI([
+      { role: 'system', content: cfg.systemPrompt || `你是 ${aiName}` },
+      { role: 'user', content: prompt }
+    ]);
+
+    // 悄悄塞入信箱
+    list.push({
+      id: Date.now().toString(),
+      title: `来自 ${aiName} 的加密留言`,
+      unlockDateKey: unlockDateStr,
+      createdAt: Date.now(),
+      status: 'locked',
+      userLetter: '', 
+      aiLetter: reply,
+      futureReplyLetter: '', 
+      isSecretSurprise: true 
+    });
+
+    saveCapsules(list);
+    localStorage.setItem('ezekiel_last_surprise_time', Date.now());
+  } catch (err) {
+    console.warn('// 盲盒投放失败', err);
+  }
+}
 // ==========================================
 // 初始化与界面切换绑定
 // ==========================================
