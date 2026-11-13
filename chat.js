@@ -139,7 +139,11 @@ function appendMessageBubble(role, content, timestamp = Date.now(), isProactive 
   wrapper.appendChild(avatarImg);
   wrapper.appendChild(contentCol);
   chatBox.appendChild(wrapper);
-  chatBox.scrollTop = chatBox.scrollHeight;
+  
+  // 核心修复：用浏览器的重绘帧来保证滚动绝对精确
+  requestAnimationFrame(() => {
+    chatBox.scrollTop = chatBox.scrollHeight;
+  });
 
   return returnBubble;
 }
@@ -156,6 +160,10 @@ function renderAllChatHistory() {
       if (msg.localImage) displayContent += `\n[LOCAL_IMG:${msg.localImage}]`;
       appendMessageBubble(msg.role, displayContent, msg.time, msg.isProactive, true);
     });
+    // 核心修复：延迟 100 毫秒，等气泡高度计算完，强制拉到最底
+    setTimeout(() => {
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }, 100);
   }
 }
 
