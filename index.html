@@ -249,11 +249,15 @@
             </div>
           </div>
           <div class="form-group" style="margin-top: 8px; padding-top: 12px; border-top: 1px dashed var(--border-dim);">
-            <label>全站数据备份与迁移</label>
-            <div style="display: flex; gap: 10px; margin-top: 4px;">
-              <button class="tac-btn" id="export-data-btn">📤 导出完整存档</button>
+            <label>☁️ 云端同步与本地备份 (Sync & Backup)</label>
+            <div style="display: flex; gap: 8px; margin-top: 4px; margin-bottom: 8px;">
+              <input type="password" id="cfg-sync-secret" placeholder="输入专属暗号(如: AGGY_99)" style="flex: 1; border-color: var(--accent-amber);">
+              <button class="tac-btn primary" id="cloud-pull-btn" title="输入暗号后点击，从云端拉取恢复数据">📥 从云拉取</button>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="tac-btn" id="export-data-btn">📤 导出本地文件</button>
               <input type="file" id="import-data-input" accept=".json" style="display: none;">
-              <button class="tac-btn" id="import-data-btn">📥 恢复存档备份</button>
+              <button class="tac-btn" id="import-data-btn">📥 导入本地文件</button>
             </div>
           </div>
         </div>

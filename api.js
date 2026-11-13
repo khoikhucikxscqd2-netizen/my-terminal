@@ -1,5 +1,5 @@
 // ==========================================
-// 阶段一：终端核心配置、10w Token 滑动窗口与 API 通信层 (v1.7 豆包官方原生兼容版)
+// 阶段一 & 云端升级版：API 通信层 + Supabase 静默同步引擎
 // ==========================================
 
 const STORAGE_KEYS = {
@@ -15,8 +15,13 @@ const DEFAULT_CONFIG = {
   proactive: 'on', proactiveMax: 5, proactiveInterval: '15-45', systemPrompt: '',
   userName: 'USER', aiName: 'AI',
   userAvatar: DEFAULT_AVATAR, aiAvatar: DEFAULT_AVATAR,
-  theme: 'tactical-green'
+  theme: 'tactical-green',
+  syncSecret: '' // 新增暗号字段
 };
+
+// --- Supabase 云端钥匙 ---
+const SUPA_URL = 'https://dkboyuwgvddnrpgsgrir.supabase.co/rest/v1/terminal_sync';
+const SUPA_KEY = 'sb_publishable_9vvsCiFXJN0t_oaKxHjLrA_B1d2bMng';
 
 function getConfig() {
   const saved = localStorage.getItem(STORAGE_KEYS.CONFIG);
@@ -26,9 +31,98 @@ function getConfig() {
 function saveConfig(newConfig) {
   localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(newConfig));
   updateTopBarMetrics();
+  triggerCloudPush(); // 配置保存时，顺便推送到云端
 }
 
-// 🌟 智能规范化接口地址（完美兼容普通 /v1 接口 与 豆包火山方舟 /v3 接口）
+// 🌟 核心引擎：静默打包上传云端
+async function triggerCloudPush() {
+  const secret = getConfig().syncSecret;
+  if (!secret || secret.trim() === '') return; // 没设暗号就不上传
+  
+  // 收集当前所有的本地数据
+  const payload = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('ezekiel_')) {
+      payload[key] = localStorage.getItem(key);
+    }
+  }
+
+  // 发送给 Supabase
+  try {
+    await fetch(SUPA_URL, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': `Bearer ${SUPA_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates' // 如果有同样的暗号，就直接覆盖更新
+      },
+      body: JSON.stringify({
+        secret_code: secret.trim(),
+        payload: payload
+      })
+    });
+    console.log('[云端] 数据已静默同步');
+  } catch (err) {
+    console.warn('[云端] 同步失败，继续使用本地数据', err);
+  }
+}
+
+// 🌟 核心引擎：从云端拉取数据覆盖本地
+async function pullFromCloud(secretCode, statusBtn) {
+  if (!secretCode) return alert('请先输入同步暗号！');
+  if (statusBtn) statusBtn.textContent = '⏳ 拉取中...';
+  
+  try {
+    const res = await fetch(`${SUPA_URL}?secret_code=eq.${secretCode}`, {
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': `Bearer ${SUPA_KEY}`
+      }
+    });
+    const data = await res.json();
+    
+    if (data && data.length > 0 && data[0].payload) {
+      const cloudData = data[0].payload;
+      for (const key in cloudData) {
+        if (key.startsWith('ezekiel_')) {
+          localStorage.setItem(key, cloudData[key]);
+        }
+      }
+      if (statusBtn) {
+        statusBtn.textContent = '✓ 恢复成功！重启中';
+        statusBtn.style.background = 'var(--accent-amber)';
+        statusBtn.style.color = '#000';
+      }
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      alert('云端没有找到该暗号的存档，请检查是否拼写错误。');
+      if (statusBtn) statusBtn.textContent = '📥 从云拉取';
+    }
+  } catch (err) {
+    alert('连接云端失败！请检查网络。');
+    if (statusBtn) statusBtn.textContent = '📥 从云拉取';
+  }
+}
+
+// ==========================================
+// 劫持所有存数据的动作，顺便推给云端
+// （这部分利用重写原生的 setItem 来实现，一劳永逸）
+// ==========================================
+const originalSetItem = localStorage.setItem;
+let pushTimeout = null;
+localStorage.setItem = function(key, value) {
+  originalSetItem.apply(this, arguments);
+  // 如果存的是咱们的数据，延迟2秒打包推送（防频繁点击卡顿）
+  if (key.startsWith('ezekiel_') && getConfig().syncSecret) {
+    clearTimeout(pushTimeout);
+    pushTimeout = setTimeout(() => triggerCloudPush(), 2000);
+  }
+};
+
+
+// 🌟 智能规范化接口地址
 function normalizeBaseUrl(rawHost) {
   let baseUrl = (rawHost || '').trim().replace(/\/+$/, '');
   if (!baseUrl.endsWith('/v1') && !baseUrl.endsWith('/v3')) {
@@ -213,6 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(document.getElementById('cfg-ai-name')) document.getElementById('cfg-ai-name').value = cfg.aiName || 'AI';
     if(document.getElementById('preview-user-avatar')) document.getElementById('preview-user-avatar').src = cfg.userAvatar || DEFAULT_AVATAR;
     if(document.getElementById('preview-ai-avatar')) document.getElementById('preview-ai-avatar').src = cfg.aiAvatar || DEFAULT_AVATAR;
+    if(document.getElementById('cfg-sync-secret')) document.getElementById('cfg-sync-secret').value = cfg.syncSecret || '';
     
     applyTheme(cfg.theme || 'tactical-green');
     populateModelSelect(cfg.model ? [{id: cfg.model}] : [], cfg.model);
@@ -232,7 +327,8 @@ document.addEventListener('DOMContentLoaded', () => {
       aiName: document.getElementById('cfg-ai-name')?.value.trim() || 'AI',
       userAvatar: document.getElementById('preview-user-avatar')?.src || DEFAULT_AVATAR,
       aiAvatar: document.getElementById('preview-ai-avatar')?.src || DEFAULT_AVATAR,
-      theme: selectedThemeId || 'tactical-green'
+      theme: selectedThemeId || 'tactical-green',
+      syncSecret: document.getElementById('cfg-sync-secret')?.value.trim() || ''
     };
   }
 
@@ -246,11 +342,16 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('save-settings-btn')?.addEventListener('click', () => {
     saveConfig(readForm());
     testResultEl.style.color = '#38b27b';
-    testResultEl.textContent = '✓ 配置与主题偏好已写入本地。';
+    testResultEl.textContent = '✓ 配置与暗号已保存并同步云端。';
     setTimeout(() => { modal.classList.add('hidden'); window.location.reload(); }, 600);
   });
 
-  // 🌟 升级检索按钮：如果接口不支持自动拉取列表（比如豆包官方），直接弹窗让你输入 ep- 接入点 ID
+  // 绑定云端手动拉取按钮
+  document.getElementById('cloud-pull-btn')?.addEventListener('click', function() {
+    const code = document.getElementById('cfg-sync-secret').value.trim();
+    pullFromCloud(code, this);
+  });
+
   document.getElementById('fetch-models-btn')?.addEventListener('click', async () => {
     const host = document.getElementById('cfg-api-host').value.trim();
     const key = document.getElementById('cfg-api-key').value.trim();
@@ -272,7 +373,6 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error('列表为空');
       }
     } catch (err) {
-      // 豆包官方走这里：直接弹出输入框让你粘贴 ep- 接入点 ID
       const manualId = prompt('当前接口不支持自动检索列表（豆包/火山方舟请直接粘贴你的接入点 ID，例如 ep-2026xxxx-xxxxx）：', document.getElementById('cfg-model').value);
       if (manualId && manualId.trim()) {
         populateModelSelect([{ id: manualId.trim() }], manualId.trim());
