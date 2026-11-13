@@ -323,7 +323,7 @@ input:focus, textarea:focus, select:focus {
   border: 1px solid var(--accent-amber);
   width: 100%;
   max-width: 620px;
-  max-height: 90dvh;
+  max-height: 85dvh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85);
