@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="themes.css">
   <link rel="stylesheet" href="modules/anniversary/anniversary.css">
+  <link rel="stylesheet" href="modules/timecapsule/timecapsule.css">
 </head>
 <body>
   <!-- 顶部终端状态栏 -->
@@ -187,11 +188,10 @@
           <div class="ext-icon">🎟️</div>
           <div class="ext-name">积分兑换(待建)</div>
         </div>
-        <div class="ext-module-card locked" title="建设中...">
+        <div class="ext-module-card" id="btn-open-capsule">
           <div class="ext-icon">📮</div>
-          <div class="ext-name">时空信箱(待建)</div>
+          <div class="ext-name">时空信箱</div>
         </div>
-
       </div>
     </div>
   </div>
@@ -252,6 +252,66 @@
       <div class="modal-footer" style="display: flex; justify-content: space-between;">
         <button class="tac-btn" id="delete-anni-btn" style="color: var(--accent-red); border-color: var(--accent-red);">🗑️ 删除此项</button>
         <button class="tac-btn primary" id="save-anni-btn">💾 保存当前项</button>
+      </div>
+    </div>
+  </div>
+  <!-- 0-3. 扩展模块：时空信箱 (Time Capsule) -->
+  <div class="modal-backdrop hidden" id="timecapsule-modal" style="z-index: 120;">
+    <div class="tac-modal" style="max-width: 520px;">
+      <div class="panel-header modal-header">
+        <span class="panel-tag">[TIME-CAPSULE]</span>
+        <h2>时空信箱 // TIME CAPSULE</h2>
+        <button class="close-btn" id="close-capsule-modal-btn">✕</button>
+      </div>
+      
+      <div class="modal-body" style="padding: 16px;">
+        
+        <!-- 视图 A：信箱列表 -->
+        <div id="capsule-list-view">
+          <div class="goals-bar" style="margin-bottom: 12px; background: transparent; border: none; padding: 0;">
+            <span class="goals-label" style="color: var(--accent-amber);">// 寄给未来的加密胶囊</span>
+            <div>
+              <button class="mini-btn" id="btn-cap-export" title="导出所有已拆封的信件">📥 导出已拆</button>
+              <button class="tac-btn primary" id="btn-go-write" style="margin-left: 6px;">✍ 写一封信</button>
+            </div>
+          </div>
+          <div class="capsule-list" id="capsule-list-container">
+            <!-- 列表动态渲染区 -->
+          </div>
+        </div>
+
+        <!-- 视图 B：写信界面 -->
+        <div id="capsule-write-view" style="display: none;">
+          <button class="mini-btn" id="btn-write-back" style="margin-bottom: 12px;">◀ 返回信箱</button>
+          <div class="form-row" style="margin-bottom: 12px;">
+            <div class="form-group">
+              <label>胶囊标题</label>
+              <input type="text" id="cap-write-title" placeholder="如: 写给半年后的我们">
+            </div>
+            <div class="form-group">
+              <label>设定解锁日期</label>
+              <input type="date" id="cap-write-date" style="color: var(--accent-red);">
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>信件正文</label>
+            <textarea id="cap-write-content" rows="6" placeholder="写下你此刻想对未来说的悄悄话..."></textarea>
+          </div>
+          <button class="tac-btn primary" id="btn-cap-send" style="width: 100%;">📮 封存并寄出</button>
+          <p class="slot-hint" style="margin-top: 8px;">// 寄出时，系统将暗中请求对方写一封回信，并一并加密封存，不到日子绝不泄露。</p>
+        </div>
+
+        <!-- 视图 C：阅读界面（到期拆封） -->
+        <div id="capsule-reader-view" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <button class="mini-btn" id="btn-read-back">◀ 收回信箱</button>
+            <span style="font-family: var(--font-mono); font-size: 13px; color: var(--accent-amber); font-weight: bold;" id="cap-read-title">标题加载中</span>
+          </div>
+          <div class="capsule-reader-box" id="cap-reader-content">
+            <!-- 信件内容渲染区 -->
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -496,5 +556,6 @@
   <script src="diary.js"></script>
   <script src="reading.js"></script>
   <script src="modules/anniversary/anniversary.js"></script>
+  <script src="modules/timecapsule/timecapsule.js"></script>
 </body>
 </html>
