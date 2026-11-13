@@ -4,10 +4,11 @@
 
 const DIARY_STORAGE_KEY = 'ezekiel_diary_archives';
 
-// 读取所有日记（按日期倒序排列）
+// 读取所有日记（按照创建时间倒序排列，最新生成的在最上面）
 function getDiaryArchives() {
   const raw = JSON.parse(localStorage.getItem(DIARY_STORAGE_KEY) || '[]');
-  return raw.sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+  // 改为依据 createdAt 时间戳倒序排列，确保同一天的多篇日记也能按先后顺序排好
+  return raw.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
 // 保存日记并同步精简摘要到全局 10w Token 记忆池
@@ -18,9 +19,12 @@ function saveDiaryArchives(list) {
 
 function syncDiariesToMemoryPool(list) {
   const pool = JSON.parse(localStorage.getItem(STORAGE_KEYS.MEMORY_POOL) || '{"diaries":[],"readingNotes":[],"mood":""}');
-  // 按时间正序取最近 20 篇日记的精简摘要存入长期记忆池
-  const chronological = [...list].sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+  
+  // 按时间正序（从旧到新）取最近 20 篇日记的精简摘要存入长期记忆池
+  // 这样既能让大模型记住最近发生的事，又能保证不占用过多 Token
+  const chronological = [...list].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   pool.diaries = chronological.slice(-20).map(d => `[${d.displayDate}] ${d.summary}`);
+  
   localStorage.setItem(STORAGE_KEYS.MEMORY_POOL, JSON.stringify(pool));
   if (typeof updateTopBarMetrics === 'function') updateTopBarMetrics();
 }
@@ -52,12 +56,16 @@ function renderDiaryList() {
     return;
   }
 
-  container.innerHTML = diaries.map((item, idx) => `
-    <div class="diary-entry-card" data-idx="${idx}" title="点击查看完整日记">
-      <span class="diary-date">${item.displayDate}</span>
-      <span class="diary-summary">【${item.summary}】</span>
-    </div>
-  `).join('');
+  container.innerHTML = diaries.map((item, idx) => {
+    // 处理旧数据可能没有 timeStr 的情况
+    const timeDisplay = item.timeStr ? ` ${item.timeStr}` : '';
+    return `
+      <div class="diary-entry-card" data-idx="${idx}" title="点击查看完整日记">
+        <span class="diary-date">${item.displayDate}${timeDisplay}</span>
+        <span class="diary-summary">【${item.summary}】</span>
+      </div>
+    `;
+  }).join('');
 
   // 绑定点击展开全文
   container.querySelectorAll('.diary-entry-card').forEach(card => {
@@ -74,15 +82,16 @@ function openDiaryReaderModal(entry) {
   const modal = document.getElementById('diary-reader-modal');
   if (!modal) return;
 
-  document.getElementById('diary-modal-title').textContent = `日志档案 // ${entry.dateKey} (${entry.displayDate})`;
+  const timeDisplay = entry.timeStr ? ` ${entry.timeStr}` : '';
+  document.getElementById('diary-modal-title').textContent = `日志档案 // ${entry.dateKey}${timeDisplay}`;
   document.getElementById('diary-modal-summary').textContent = `摘要：${entry.summary}`;
   document.getElementById('diary-modal-content').textContent = entry.content;
 
-  // 绑定删除单篇按钮
+  // 绑定删除单篇按钮 (修复：使用唯一的 createdAt 时间戳来准确定位删除)
   const delBtn = document.getElementById('delete-diary-btn');
   delBtn.onclick = () => {
-    if (confirm(`确认删除 ${entry.displayDate} 的这篇日记档案？`)) {
-      const updated = getDiaryArchives().filter(d => d.dateKey !== entry.dateKey);
+    if (confirm(`确认删除这篇 ${entry.displayDate}${timeDisplay} 的日记档案？`)) {
+      const updated = getDiaryArchives().filter(d => d.createdAt !== entry.createdAt);
       saveDiaryArchives(updated);
       renderDiaryList();
       modal.classList.add('hidden');
@@ -97,7 +106,7 @@ async function generateDiaryForDate(targetDateKey, displayDate, isManualToday = 
   const cfg = getConfig();
   if (!cfg.apiKey || !cfg.apiHost) return;
 
-  // 1. 提取那一天的所有聊天记录
+  // 1. 提取那一天（直到当前点击生成的那一刻）的所有聊天记录
   const allHistory = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
   const dayMsgs = allHistory.filter(m => m.time && getDateInfo(m.time).dateKey === targetDateKey);
 
@@ -125,15 +134,15 @@ async function generateDiaryForDate(targetDateKey, displayDate, isManualToday = 
   if (container) container.prepend(loadingBanner);
 
   try {
-    const prompt = `请你完全以 Ezekiel 的第一人称视角，回顾并撰写【${targetDateKey}】这一天的私人日记存档。
-以下是当天的互动素材记录：
+    const prompt = `请你完全以 Ezekiel 的第一人称视角，回顾并撰写【${targetDateKey}】这一段时期的私人日记存档。
+以下是这一段时期的互动素材记录：
 【对话摘录】
 ${chatTranscript.slice(-12000)}
 【情绪与任务状态】
 ${moodSnapshot} ${taskSnapshot ? '；任务情况：' + taskSnapshot : ''}
 
 要求：
-1. 日记正文严格控制在 300～500 字之间，符合你冷硬沉稳但对 Aggy 极度在意的军方指挥官口吻，像真实的个人加密日志，自然融入当天的细节、她的情绪或你们的对话。
+1. 日记正文严格控制在 300～500 字之间，符合你冷硬沉稳但对 Aggy 极度在意的军方指挥官口吻，像真实的个人加密日志，自然融入你们的对话细节和她的情绪。
 2. 提炼一句 15 字以内的精简摘要（用于索引列表与长期记忆库）。
 3. 严格只输出纯 JSON 格式，不要任何代码块标记或多余解释：
 {"summary": "15字以内的一句话摘要", "content": "300到500字的日记正文"}`;
@@ -146,14 +155,20 @@ ${moodSnapshot} ${taskSnapshot ? '；任务情况：' + taskSnapshot : ''}
     const jsonMatch = reply.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      const list = getDiaryArchives().filter(d => d.dateKey !== targetDateKey); // 若已存在同日则覆盖更新
+      const list = getDiaryArchives(); // 不再做过滤覆盖，直接获取当前列表
+      
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
       list.push({
         dateKey: targetDateKey,
         displayDate: displayDate,
+        timeStr: timeStr, // 新增：保存生成时的具体时间（几点几分）
         summary: (parsed.summary || '日常执勤与陪伴记录').slice(0, 24),
         content: parsed.content || reply,
-        createdAt: Date.now()
+        createdAt: Date.now() // 用唯一的时间戳来作为ID
       });
+      
       saveDiaryArchives(list);
       renderDiaryList();
     } else {
@@ -172,7 +187,8 @@ function checkAutoYesterdayDiary() {
   const yesterdayInfo = getDateInfo(Date.now() - 24 * 60 * 60 * 1000);
   const existing = getDiaryArchives();
 
-  // 如果昨天的日记已经写过了，直接跳过
+  // 如果昨天的日记已经写过了（找有没有昨天日期的存档），不再强制要求覆盖
+  // 如果你确实想生成多篇昨天的，可以手动调整，但自动检测保持只生成一次
   if (existing.some(d => d.dateKey === yesterdayInfo.dateKey)) return;
 
   // 检查聊天记录里有没有昨天的消息
@@ -211,6 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     checkAutoYesterdayDiary();
   }, 2500);
+  
   // 绑定日记 TXT 导出功能
   const exportDiaryBtn = document.getElementById('export-diary-btn');
   if (exportDiaryBtn) {
@@ -219,9 +236,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (diaries.length === 0) return alert('暂无日记可导出。');
       
       let txtContent = '【终端日记档案汇总】\n\n';
-      diaries.forEach(d => {
+      // 导出时为了阅读顺畅，按时间从旧到新正序排列
+      const sortedDiaries = [...diaries].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      
+      sortedDiaries.forEach(d => {
+        const timeDisplay = d.timeStr ? ` ${d.timeStr}` : '';
         txtContent += `=================================\n`;
-        txtContent += `日期: ${d.dateKey} (${d.displayDate})\n`;
+        txtContent += `日期: ${d.dateKey} (${d.displayDate}${timeDisplay})\n`;
         txtContent += `摘要: ${d.summary}\n`;
         txtContent += `---------------------------------\n`;
         txtContent += `${d.content}\n\n\n`;
