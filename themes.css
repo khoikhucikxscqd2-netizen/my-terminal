@@ -1,0 +1,402 @@
+/* ==========================================
+   终端皮肤仓库 (themes.css)
+   未来所有的新皮肤、定制主题都直接添加在这个文件底部
+   ========================================== */
+
+/* ==========================================
+   皮肤 1：森屿手札 (forest-cottage)
+   浅绿 + 奶米白 + 柔和木纹 + 毛绒森系按钮
+   ========================================== */
+[data-theme="forest-cottage"] {
+  --bg-main: #e8dec8;           /* 柔和浅橡木底色 */
+  --bg-panel: #faf7ef;          /* 奶米白纸张面板 */
+  --bg-input: #f0ebe0;          /* 暖沙色输入框 */
+  --text-main: #3b473c;         /* 温润深苔藓绿文字 */
+  --text-muted: #7c8a7d;        /* 柔和灰绿辅助字 */
+  --accent-amber: #5e9c71;      /* 清新森系浅绿主色 */
+  --accent-red: #d97a6c;        /* 暖陶土红 */
+  --border-dim: #d5ccb8;        /* 浅木色边框 */
+  --border-bright: #7eb38e;     /* 嫩叶绿高亮边 */
+}
+
+/* 1. 柔和木纹背景底纹 + 温润字体 */
+body[data-theme="forest-cottage"] {
+  background-color: #e6dcc6;
+  background-image: 
+    repeating-linear-gradient(
+      90deg,
+      rgba(168, 148, 114, 0.06) 0px,
+      rgba(168, 148, 114, 0.06) 2px,
+      transparent 2px,
+      transparent 14px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(139, 119, 86, 0.05) 0px,
+      rgba(139, 119, 86, 0.05) 1px,
+      transparent 1px,
+      transparent 28px
+    );
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* 2. 顶部导航栏：木质书签横条 */
+[data-theme="forest-cottage"] .top-bar {
+  background: #f5efe2;
+  border-bottom: 2px solid #d2c5ae;
+  box-shadow: 0 2px 10px rgba(110, 95, 70, 0.08);
+}
+
+/* 3. 面板改造：奶米白圆角信笺 + 缝线虚线内框 + 隐藏冷硬准星 */
+[data-theme="forest-cottage"] .tac-panel,
+[data-theme="forest-cottage"] .tac-modal {
+  background: var(--bg-panel);
+  border: 2px solid #d4c8b2;
+  border-radius: 14px;
+  box-shadow: 
+    0 6px 18px rgba(115, 100, 75, 0.1),
+    inset 0 0 0 3px #faf7ef,
+    inset 0 0 0 4px rgba(126, 179, 142, 0.35);
+}
+
+[data-theme="forest-cottage"] .tac-panel::before,
+[data-theme="forest-cottage"] .tac-panel::after {
+  display: none; /* 隐藏军事准星角标 */
+}
+
+[data-theme="forest-cottage"] .panel-header {
+  background: rgba(126, 179, 142, 0.12);
+  border-bottom: 1px dashed #c8dec9;
+  border-radius: 12px 12px 0 0;
+}
+
+[data-theme="forest-cottage"] .panel-tag {
+  background: #6ca67e;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 2px 6px;
+}
+
+/* 森系小植物装饰 */
+[data-theme="forest-cottage"] #panel-diary .panel-header h2::after { content: " 🌱"; font-size: 13px; }
+[data-theme="forest-cottage"] #panel-reading .panel-header h2::after { content: " 🍃"; font-size: 13px; }
+[data-theme="forest-cottage"] #panel-chat .panel-header h2::after { content: " 🍀"; font-size: 13px; }
+[data-theme="forest-cottage"] #panel-mood .panel-header h2::after { content: " 🌼"; font-size: 13px; }
+
+/* 4. 毛绒绒按钮质感（蓬松立体阴影 + 柔软按压反馈） */
+[data-theme="forest-cottage"] .tac-btn,
+[data-theme="forest-cottage"] .icon-btn,
+[data-theme="forest-cottage"] .mini-btn,
+[data-theme="forest-cottage"] .mood-chip {
+  background: #f4efe4;
+  border: 1.5px solid #c5d4c2;
+  border-radius: 18px;
+  color: #465949;
+  font-weight: 600;
+  box-shadow: 
+    0 3px 0 #c9bfa9,
+    inset 0 2px 3px rgba(255, 255, 255, 0.9),
+    inset 0 -2px 4px rgba(130, 155, 132, 0.18);
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-theme="forest-cottage"] .tac-btn:hover,
+[data-theme="forest-cottage"] .icon-btn:hover,
+[data-theme="forest-cottage"] .mini-btn:hover,
+[data-theme="forest-cottage"] .mood-chip:hover {
+  background: #ebf5ec;
+  border-color: #7eb38e;
+  transform: translateY(-1px);
+  box-shadow: 
+    0 4px 6px rgba(107, 158, 120, 0.2),
+    inset 0 2px 4px #ffffff;
+}
+
+[data-theme="forest-cottage"] .tac-btn:active,
+[data-theme="forest-cottage"] .icon-btn:active,
+[data-theme="forest-cottage"] .mini-btn:active {
+  transform: translateY(2px);
+  box-shadow: 
+    0 1px 0 #c9bfa9,
+    inset 0 2px 4px rgba(94, 156, 113, 0.25);
+}
+
+/* 主按钮：毛绒抹茶绿 */
+[data-theme="forest-cottage"] .tac-btn.primary,
+[data-theme="forest-cottage"] .mood-chip.active {
+  background: #6ca67e;
+  border-color: #558c66;
+  color: #ffffff;
+  box-shadow: 
+    0 3px 0 #4d805c,
+    inset 0 2px 3px rgba(255, 255, 255, 0.45),
+    inset 0 -2px 4px rgba(45, 85, 58, 0.25);
+}
+
+[data-theme="forest-cottage"] .tac-btn.primary:hover {
+  background: #77b389;
+}
+
+/* 5. 聊天气泡改造：温暖手账气泡 */
+[data-theme="forest-cottage"] .msg-ai {
+  background: #ffffff;
+  border: 1.5px solid #d5e3d6;
+  border-left: 4px solid #6ca67e;
+  border-radius: 4px 14px 14px 14px;
+  color: #364237;
+  box-shadow: 0 2px 6px rgba(100, 120, 100, 0.06);
+}
+
+[data-theme="forest-cottage"] .msg-user {
+  background: #e4f2e6;
+  border: 1.5px solid #b4d4b9;
+  border-right: 4px solid #5e9c71;
+  border-radius: 14px 4px 14px 14px;
+  color: #2c3d2e;
+  box-shadow: 0 2px 6px rgba(100, 120, 100, 0.06);
+}
+
+[data-theme="forest-cottage"] .chat-avatar {
+  border-radius: 10px;
+  border: 2px solid #8bbd9a;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* 6. 输入框与弹窗细节适配 */
+[data-theme="forest-cottage"] input,
+[data-theme="forest-cottage"] textarea,
+[data-theme="forest-cottage"] select {
+  background: var(--bg-input) !important;
+  color: var(--text-main) !important;
+  border: 1.5px solid #cfc4ae !important;
+  border-radius: 10px !important;
+}
+
+[data-theme="forest-cottage"] input:focus,
+[data-theme="forest-cottage"] textarea:focus {
+  border-color: #6ca67e !important;
+  background: #ffffff !important;
+}
+
+/* 24x24 像素画小屏幕森系配色适配 */
+[data-theme="forest-cottage"] .tac-pixel-screen {
+  background: #eef5ef;
+  border-color: #7eb38e;
+  border-radius: 8px;
+  box-shadow: inset 0 0 6px rgba(108, 166, 126, 0.15);
+}
+[data-theme="forest-cottage"] .mini-px {
+  background: rgba(126, 179, 142, 0.15);
+}
+[data-theme="forest-cottage"] .mini-px.on {
+  background: #558c66;
+  box-shadow: none;
+}
+
+/* 书库卡片与日记卡片适配 */
+[data-theme="forest-cottage"] .book-card,
+[data-theme="forest-cottage"] .diary-entry-card,
+[data-theme="forest-cottage"] .mood-line,
+[data-theme="forest-cottage"] .task-item {
+  background: #f5f0e4;
+  border: 1px solid #dcd1bc;
+  border-radius: 10px;
+}
+/* ==========================================
+   皮肤 2：晴空牧场 (cloud-puppy)
+   蓝白色系 + 云朵蓬松感 + 小狗/项圈/骨头/小草元素
+   ========================================== */
+[data-theme="cloud-puppy"] {
+  --bg-main: #d8ecfc;           /* 晴空浅蓝底色 */
+  --bg-panel: #ffffff;          /* 纯净云朵白面板 */
+  --bg-input: #f0f7ff;          /* 淡蓝晴空输入框 */
+  --text-main: #2c4a66;         /* 温润深海蓝文字 */
+  --text-muted: #7899b8;        /* 雾霾蓝辅助字 */
+  --accent-amber: #4b9ce2;      /* 晴空天蓝主色（小狗项圈蓝） */
+  --accent-green: #6bc482;      /* 牧场嫩草绿（在线状态灯） */
+  --accent-red: #ff7675;        /* 肉垫珊瑚粉红 */
+  --border-dim: #cbe3f7;        /* 浅云蓝边框 */
+  --border-bright: #6bb3f0;     /* 亮天蓝高亮边 */
+}
+
+/* 1. 蓝白晴空 + 软绵绵云朵波点底纹 */
+body[data-theme="cloud-puppy"] {
+  background-color: #dff0fe;
+  background-image: 
+    radial-gradient(circle at 20px 20px, rgba(255, 255, 255, 0.85) 12px, transparent 13px),
+    radial-gradient(circle at 34px 24px, rgba(255, 255, 255, 0.85) 10px, transparent 11px),
+    radial-gradient(circle at 10px 25px, rgba(255, 255, 255, 0.85) 8px, transparent 9px);
+  background-size: 90px 70px;
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* 2. 顶部导航栏：蓝色小狗项圈 + 铭牌质感 */
+[data-theme="cloud-puppy"] .top-bar {
+  background: linear-gradient(180deg, #ffffff 0%, #eef6fd 100%);
+  border-bottom: 3px solid #7ab8f0;
+  box-shadow: 0 3px 12px rgba(75, 156, 226, 0.12);
+}
+
+/* 3. 面板改造：蓬松软绵的云朵大圆角卡片 */
+[data-theme="cloud-puppy"] .tac-panel,
+[data-theme="cloud-puppy"] .tac-modal {
+  background: var(--bg-panel);
+  border: 2px solid #c5e1f9;
+  border-radius: 20px;
+  box-shadow: 
+    0 8px 20px rgba(75, 156, 226, 0.12),
+    inset 0 2px 6px rgba(255, 255, 255, 1),
+    inset 0 -3px 8px rgba(180, 216, 248, 0.35);
+}
+
+[data-theme="cloud-puppy"] .tac-panel::before,
+[data-theme="cloud-puppy"] .tac-panel::after {
+  display: none; /* 隐藏军事准星 */
+}
+
+[data-theme="cloud-puppy"] .panel-header {
+  background: linear-gradient(90deg, rgba(135, 197, 248, 0.18) 0%, rgba(255, 255, 255, 0.4) 100%);
+  border-bottom: 1.5px dashed #bfe0fa;
+  border-radius: 18px 18px 0 0;
+}
+
+/* 面板标签：小狗项圈名牌胶囊 */
+[data-theme="cloud-puppy"] .panel-tag {
+  background: #4b9ce2;
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 2px 8px;
+  box-shadow: 0 2px 0 #357ab8;
+}
+
+/* 专属小狗、骨头、小草、肉垫图标替换 */
+[data-theme="cloud-puppy"] #panel-diary .panel-header h2::after { content: " 🦴"; font-size: 14px; }
+[data-theme="cloud-puppy"] #panel-reading .panel-header h2::after { content: " 🌱"; font-size: 14px; }
+[data-theme="cloud-puppy"] #panel-chat .panel-header h2::after { content: " 🐶"; font-size: 14px; }
+[data-theme="cloud-puppy"] #panel-mood .panel-header h2::after { content: " 🐾"; font-size: 14px; }
+[data-theme="cloud-puppy"] #panel-tasks .panel-header h2::after { content: " 🌿"; font-size: 14px; }
+
+/* 4. 云朵 Q 弹按钮质感 */
+[data-theme="cloud-puppy"] .tac-btn,
+[data-theme="cloud-puppy"] .icon-btn,
+[data-theme="cloud-puppy"] .mini-btn,
+[data-theme="cloud-puppy"] .mood-chip {
+  background: #f4f9ff;
+  border: 1.5px solid #b8daf7;
+  border-radius: 20px;
+  color: #365c80;
+  font-weight: 600;
+  box-shadow: 
+    0 3px 0 #b8daf7,
+    inset 0 2px 4px #ffffff;
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-theme="cloud-puppy"] .tac-btn:hover,
+[data-theme="cloud-puppy"] .icon-btn:hover,
+[data-theme="cloud-puppy"] .mini-btn:hover,
+[data-theme="cloud-puppy"] .mood-chip:hover {
+  background: #e3f1ff;
+  border-color: #6bb3f0;
+  transform: translateY(-1px);
+  box-shadow: 
+    0 4px 8px rgba(75, 156, 226, 0.2),
+    inset 0 2px 4px #ffffff;
+}
+
+[data-theme="cloud-puppy"] .tac-btn:active,
+[data-theme="cloud-puppy"] .icon-btn:active,
+[data-theme="cloud-puppy"] .mini-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #b8daf7;
+}
+
+/* 主按钮：晴空天蓝项圈色 */
+[data-theme="cloud-puppy"] .tac-btn.primary,
+[data-theme="cloud-puppy"] .mood-chip.active {
+  background: #53a2e8;
+  border-color: #3e89cc;
+  color: #ffffff;
+  box-shadow: 
+    0 3px 0 #367bb8,
+    inset 0 2px 3px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="cloud-puppy"] .tac-btn.primary:hover {
+  background: #64aff0;
+}
+
+/* 5. 聊天气泡改造：云朵奶白 vs 晴空浅蓝 */
+[data-theme="cloud-puppy"] .msg-ai {
+  background: #ffffff;
+  border: 1.5px solid #cde4f9;
+  border-left: 4px solid #53a2e8;
+  border-radius: 6px 18px 18px 18px;
+  color: #2c4a66;
+  box-shadow: 0 3px 8px rgba(75, 156, 226, 0.08);
+}
+
+[data-theme="cloud-puppy"] .msg-user {
+  background: #e3f2ff;
+  border: 1.5px solid #a9d3f7;
+  border-right: 4px solid #4b9ce2;
+  border-radius: 18px 6px 18px 18px;
+  color: #1f3c58;
+  box-shadow: 0 3px 8px rgba(75, 156, 226, 0.08);
+}
+
+[data-theme="cloud-puppy"] .chat-avatar {
+  border-radius: 50%; /* 圆形小狗头像框 */
+  border: 2.5px solid #6bb3f0;
+  box-shadow: 0 2px 8px rgba(75, 156, 226, 0.2);
+}
+
+/* 6. 输入框与弹窗细节适配 */
+[data-theme="cloud-puppy"] input,
+[data-theme="cloud-puppy"] textarea,
+[data-theme="cloud-puppy"] select {
+  background: var(--bg-input) !important;
+  color: var(--text-main) !important;
+  border: 1.5px solid #c2dff8 !important;
+  border-radius: 14px !important;
+}
+
+[data-theme="cloud-puppy"] input:focus,
+[data-theme="cloud-puppy"] textarea:focus {
+  border-color: #53a2e8 !important;
+  background: #ffffff !important;
+}
+
+/* 24x24 像素画小屏幕蓝白适配 */
+[data-theme="cloud-puppy"] .tac-pixel-screen {
+  background: #eef7ff;
+  border-color: #6bb3f0;
+  border-radius: 12px;
+  box-shadow: inset 0 0 6px rgba(75, 156, 226, 0.15);
+}
+[data-theme="cloud-puppy"] .mini-px {
+  background: rgba(107, 179, 240, 0.18);
+}
+[data-theme="cloud-puppy"] .mini-px.on {
+  background: #3e89cc;
+  box-shadow: none;
+}
+
+/* 书库、日记、任务卡片适配（带牧场小草绿底边点缀） */
+[data-theme="cloud-puppy"] .book-card,
+[data-theme="cloud-puppy"] .diary-entry-card,
+[data-theme="cloud-puppy"] .mood-line,
+[data-theme="cloud-puppy"] .task-item {
+  background: #f5faff;
+  border: 1.5px solid #cde4f9;
+  border-bottom: 2.5px solid #8fd19e; /* 底部一抹牧场小草绿 */
+  border-radius: 14px;
+}
+
+/* 手机端底部导航栏项圈蓝适配 */
+[data-theme="cloud-puppy"] .mobile-tab-bar {
+  background: #ffffff;
+  border-top: 2px solid #7ab8f0;
+}
