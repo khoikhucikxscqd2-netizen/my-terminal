@@ -161,8 +161,8 @@ function handleQuoteClick(rawContent, senderName) {
   document.getElementById('quick-test-input')?.focus();
 }
 
-// 🌟 处理点击窥探心声
-async function handlePeekThought(btnEl, rawContent, containerEl, aiName) {
+// 🌟 处理点击窥探心声（整轮完整回复窥探版）
+async function handlePeekThought(btnEl, fullTurnContent, containerEl, aiName) {
   if (btnEl.disabled) return;
   
   const cfg = getConfig();
@@ -172,14 +172,15 @@ async function handlePeekThought(btnEl, rawContent, containerEl, aiName) {
   const originalText = btnEl.innerHTML;
   btnEl.innerHTML = '⏳...';
 
-  // 提取需要被窥探的纯文本
-  let cleanText = rawContent.replace(/\[SKETCH:[\s\S]*?\]/g, '[画像]')
-                            .replace(/\[LOCAL_IMG:.*?\]/g, '[图片]')
-                            .replace(/\[表情包:([^\|]+)\|.*\]/g, '[$1]')
-                            .replace(/\[QUOTE:.*?\]/g, ''); 
+  // 清理整轮回复里的特殊标记（把换行符替换成空格，保留他说的每一句话）
+  let cleanFullText = fullTurnContent.replace(/\[SKETCH:[\s\S]*?\]/g, '[附带了一幅像素画]')
+                                     .replace(/\[LOCAL_IMG:.*?\]/g, '[图片]')
+                                     .replace(/\[表情包:([^\|]+)\|.*\]/g, '[$1]')
+                                     .replace(/\[QUOTE:.*?\]/g, '')
+                                     .replace(/\n+/g, ' '); 
 
-  // 隐秘调用，绝对不存入聊天记录
-  const prompt = `[系统隐秘指令] 你刚才说了这句话：“${cleanText}”。\n请以 ${aiName} 的第一人称，用一句话描述你在这个瞬间最真实、没说出口的潜台词或情绪（例如：其实有点吃醋、想抱抱她、假装镇定等。20字以内，直接输出心声，不加解释）。`;
+  // 隐秘调用，结合上下文与他这一整段连发回复，绝对不存入聊天记录
+  const prompt = `[系统隐秘指令] 你刚才在聊天中连续发了这一整段话：“${cleanFullText}”。\n请结合当前聊天语境，完全以 ${aiName} 的第一人称，剖析你发出这一整段话时内心最真实、没说出口的完整心理活动（35字以内，口语化内心独白，直接输出心声内容，不要加任何前缀或解释）。`;
 
   let thoughtBox = containerEl.querySelector('.msg-inner-thought');
   if (!thoughtBox) {
@@ -255,7 +256,7 @@ function appendMessageBubble(role, content, timestamp = Date.now(), isProactive 
       const peekBtn = document.createElement('button');
       peekBtn.className = 'action-btn';
       peekBtn.innerHTML = '💭 窥探';
-      peekBtn.onclick = (e) => { e.stopPropagation(); handlePeekThought(peekBtn, partContent, container, senderName); };
+      peekBtn.onclick = (e) => { e.stopPropagation(); handlePeekThought(peekBtn, content, container, senderName); };
       
       const delBtn = document.createElement('button');
       delBtn.className = 'action-btn';
