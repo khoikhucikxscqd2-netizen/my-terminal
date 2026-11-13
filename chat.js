@@ -1,5 +1,5 @@
 // ==========================================
-// 阶段二：实时流式聊天室 & 表情包多模态引擎 & 智能切分 (chat.js - 识图修复版)
+// 阶段二（1.3.3版）：实时流式聊天室 & 引用、撤回与读心引擎
 // ==========================================
 
 const CHAT_META_KEY = 'ezekiel_proactive_meta';
@@ -13,6 +13,7 @@ const CHAT_STYLE_RULE = `【通讯频道强制法则】
 let proactiveTimer = null;
 let lastUserActivity = Date.now();
 let isGenerating = false;
+let currentQuote = null; // 记录当前正在引用的文本
 
 ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
   document.addEventListener(evt, () => { lastUserActivity = Date.now(); }, { passive: true });
@@ -35,28 +36,44 @@ function formatMsgTime(ts) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-// 保护表情包、像素画和本地图片标签在切分气泡时不被切碎
+// 提取并剥离引用标记，防止分块时切断
 function splitIntoBubbles(text) {
   const placeholders = [];
-  let tempText = text.replace(/\[SKETCH:\s*([\s\S]*?)\s*\]/g, (match) => {
+  
+  // 保护引用块 [QUOTE:xxx]
+  let tempText = text.replace(/\[QUOTE:\s*([\s\S]*?)\s*\]\n?/g, (match) => {
+    placeholders.push(match); return `__PLACEHOLDER_${placeholders.length - 1}__\n`;
+  });
+  tempText = tempText.replace(/\[SKETCH:\s*([\s\S]*?)\s*\]/g, (match) => {
     placeholders.push(match); return `__PLACEHOLDER_${placeholders.length - 1}__`;
   });
   tempText = tempText.replace(/\[表情包:\s*([^\|]+)\s*\|\s*id:([^\]]+)\]/g, (match) => {
     placeholders.push(match); return `__PLACEHOLDER_${placeholders.length - 1}__`;
   });
-  // 新增：保护本地图标记
   tempText = tempText.replace(/\[LOCAL_IMG:\s*([^\]]+)\]/g, (match) => {
     placeholders.push(match); return `__PLACEHOLDER_${placeholders.length - 1}__`;
   });
 
   const parts = tempText.split(/\n+/).map(p => p.trim()).filter(p => p.length > 0);
+  
+  // 合并前导的 Quote 到第一句话里，防止 Quote 单独成一个空的气泡
+  if (parts.length > 1 && parts[0].startsWith('__PLACEHOLDER_') && placeholders[Number(parts[0].match(/\d+/)[0])].startsWith('[QUOTE:')) {
+      parts[1] = parts[0] + parts[1];
+      parts.shift();
+  }
+
   return parts.map(part => part.replace(/__PLACEHOLDER_(\d+)__/g, (match, idx) => placeholders[idx]));
 }
 
 function formatMessageContent(text) {
   let safeText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   
-  // 1. 渲染用户发送的表情包
+  // 渲染引用块
+  safeText = safeText.replace(/\[QUOTE:\s*([\s\S]*?)\s*\]/g, (match, quoteText) => {
+    return `<div class="quoted-content">${quoteText.trim()}</div>`;
+  });
+  
+  // 渲染用户发送的表情包
   safeText = safeText.replace(/\[表情包:\s*([^\|]+)\s*\|\s*id:([^\]]+)\]/g, (match, name, id) => {
     const stickers = JSON.parse(localStorage.getItem(STICKERS_KEY) || '[]');
     const s = stickers.find(x => x.id === id.trim());
@@ -64,12 +81,12 @@ function formatMessageContent(text) {
     return `<div class="sys-msg" style="display:inline-block; padding:2px 6px;">[图片已失效: ${name}]</div>`;
   });
 
-  // 2. 新增：渲染本地上传的实拍图（带点边框更好看）
+  // 渲染本地上传的实拍图
   safeText = safeText.replace(/\[LOCAL_IMG:\s*([^\]]+)\]/g, (match, base64) => {
     return `<img src="${base64}" class="chat-sticker-img" style="max-width: 180px; border: 1px solid var(--border-bright);">`;
   });
 
-  // 3. 渲染 AI 回复的 24x24 像素画
+  // 渲染 AI 回复的像素画
   return safeText.replace(/\[SKETCH:\s*([\s\S]*?)\s*\]/g, (match, rawGrid) => {
     const lines = rawGrid.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length >= 8 && /^[█·10#.\s]+$/.test(lines.join(''))) {
@@ -88,6 +105,104 @@ function formatMessageContent(text) {
   });
 }
 
+// 🌟 删除气泡核心逻辑 (撤回)
+function deleteBubble(bubbleEl, rawContent, timestamp, role) {
+  if (!confirm('确认删除这条消息？')) return;
+  
+  const wrapper = bubbleEl.closest('.msg-wrapper');
+  bubbleEl.remove();
+  
+  const remainingBubbles = wrapper.querySelectorAll('.msg-bubble-container');
+  if (remainingBubbles.length === 0) wrapper.remove();
+
+  const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
+  const targetIndex = history.findIndex(m => m.time === timestamp && m.role === role);
+  
+  if (targetIndex !== -1) {
+    let oldContent = history[targetIndex].content;
+    
+    if (oldContent === rawContent || rawContent.includes('[LOCAL_IMG:')) {
+       history.splice(targetIndex, 1);
+    } else {
+       oldContent = oldContent.replace(rawContent, '').trim();
+       oldContent = oldContent.replace(/\n{2,}/g, '\n'); 
+       if (oldContent.length === 0) {
+         history.splice(targetIndex, 1);
+       } else {
+         history[targetIndex].content = oldContent;
+       }
+    }
+    localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(history));
+    updateTopBarMetrics();
+  }
+}
+
+// 🌟 处理点击引用按钮
+function handleQuoteClick(rawContent, senderName) {
+  let cleanText = rawContent.replace(/\[SKETCH:[\s\S]*?\]/g, '[像素画]')
+                            .replace(/\[LOCAL_IMG:.*?\]/g, '[图片]')
+                            .replace(/\[表情包:([^\|]+)\|.*\]/g, '[$1]')
+                            .replace(/\[QUOTE:.*?\]/g, ''); 
+  
+  if (cleanText.length > 25) cleanText = cleanText.substring(0, 25) + '...';
+  
+  currentQuote = {
+    text: cleanText,
+    fullContent: rawContent,
+    name: senderName
+  };
+
+  const previewBar = document.getElementById('quote-preview-bar');
+  const previewText = document.getElementById('quote-preview-text');
+  if (previewBar && previewText) {
+    previewText.textContent = `回复 ${senderName}：${cleanText}`;
+    previewBar.classList.add('active');
+  }
+  document.getElementById('quick-test-input')?.focus();
+}
+
+// 🌟 处理点击窥探心声
+async function handlePeekThought(btnEl, rawContent, containerEl, aiName) {
+  if (btnEl.disabled) return;
+  
+  const cfg = getConfig();
+  if (!cfg.apiKey) return alert('未配置 API 秘钥');
+  
+  btnEl.disabled = true;
+  const originalText = btnEl.innerHTML;
+  btnEl.innerHTML = '⏳...';
+
+  // 提取需要被窥探的纯文本
+  let cleanText = rawContent.replace(/\[SKETCH:[\s\S]*?\]/g, '[画像]')
+                            .replace(/\[LOCAL_IMG:.*?\]/g, '[图片]')
+                            .replace(/\[表情包:([^\|]+)\|.*\]/g, '[$1]')
+                            .replace(/\[QUOTE:.*?\]/g, ''); 
+
+  // 隐秘调用，绝对不存入聊天记录
+  const prompt = `[系统隐秘指令] 你刚才说了这句话：“${cleanText}”。\n请以 ${aiName} 的第一人称，用一句话描述你在这个瞬间最真实、没说出口的潜台词或情绪（例如：其实有点吃醋、想抱抱她、假装镇定等。20字以内，直接输出心声，不加解释）。`;
+
+  let thoughtBox = containerEl.querySelector('.msg-inner-thought');
+  if (!thoughtBox) {
+    thoughtBox = document.createElement('div');
+    thoughtBox.className = 'msg-inner-thought';
+    containerEl.appendChild(thoughtBox);
+  }
+  thoughtBox.textContent = '...';
+
+  try {
+    const { messages } = buildContextPayload(prompt);
+    const reply = await callTacticalStreamAPI(messages, (partial) => {
+      thoughtBox.textContent = `💭 OS: ${partial} ▋`;
+    });
+    thoughtBox.textContent = `💭 OS: ${reply}`;
+    btnEl.innerHTML = '💭 已阅';
+  } catch (err) {
+    thoughtBox.textContent = `[读取失败]`;
+    btnEl.innerHTML = originalText;
+    btnEl.disabled = false;
+  }
+}
+
 function appendMessageBubble(role, content, timestamp = Date.now(), isProactive = false, isFinal = false) {
   const chatBox = document.getElementById('chat-messages');
   if (!chatBox) return null;
@@ -97,6 +212,7 @@ function appendMessageBubble(role, content, timestamp = Date.now(), isProactive 
   const aiName = (cfg.aiName || 'AI').toUpperCase();
   const userAvatarSrc = cfg.userAvatar || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0icmdiYSgwLCAyMzAsIDExOCwgMC4xKSIvPjwvc3ZnPg==';
   const aiAvatarSrc = cfg.aiAvatar || userAvatarSrc;
+  const senderName = role === 'user' ? userName : aiName;
 
   const wrapper = document.createElement('div');
   wrapper.className = `msg-wrapper ${role === 'user' ? 'wrap-user' : 'wrap-ai'}`;
@@ -110,43 +226,90 @@ function appendMessageBubble(role, content, timestamp = Date.now(), isProactive 
 
   const meta = document.createElement('div');
   meta.className = 'msg-meta';
-  const senderName = role === 'user' ? userName : aiName;
   const tag = isProactive ? ' <span class="proactive-tag">[主动接入]</span>' : '';
   meta.innerHTML = `${senderName} // ${formatMsgTime(timestamp)}${tag}`;
   contentCol.appendChild(meta);
 
   let returnBubble = null;
 
+  const createBubbleBlock = (partContent) => {
+    const container = document.createElement('div');
+    container.className = 'msg-bubble-container';
+    container.style.marginBottom = '6px';
+
+    const b = document.createElement('div');
+    b.className = `msg-bubble ${role === 'user' ? 'msg-user' : 'msg-ai'}`;
+    b.innerHTML = isFinal ? formatMessageContent(partContent) : partContent;
+    
+    container.appendChild(b);
+
+    if (isFinal) {
+      const actionsBar = document.createElement('div');
+      actionsBar.className = 'msg-actions-bar';
+      
+      const quoteBtn = document.createElement('button');
+      quoteBtn.className = 'action-btn';
+      quoteBtn.innerHTML = '↩ 引用';
+      quoteBtn.onclick = (e) => { e.stopPropagation(); handleQuoteClick(partContent, senderName); };
+      
+      const peekBtn = document.createElement('button');
+      peekBtn.className = 'action-btn';
+      peekBtn.innerHTML = '💭 窥探';
+      peekBtn.onclick = (e) => { e.stopPropagation(); handlePeekThought(peekBtn, partContent, container, senderName); };
+      
+      const delBtn = document.createElement('button');
+      delBtn.className = 'action-btn';
+      delBtn.innerHTML = '🗑️ 撤回';
+      delBtn.onclick = (e) => { e.stopPropagation(); deleteBubble(container, partContent, timestamp, role); };
+      
+      actionsBar.appendChild(quoteBtn);
+      // 只有 AI 发的消息才会长出读心术按钮
+      if (role === 'assistant') actionsBar.appendChild(peekBtn);
+      actionsBar.appendChild(delBtn);
+      
+      container.appendChild(actionsBar);
+
+      b.onclick = (e) => {
+        if (window.innerWidth <= 820) {
+          e.stopPropagation();
+          document.querySelectorAll('.msg-actions-bar.active').forEach(ab => {
+            if (ab !== actionsBar) ab.classList.remove('active');
+          });
+          actionsBar.classList.toggle('active');
+        }
+      };
+    }
+
+    return container;
+  };
+
   if (isFinal) {
     const parts = splitIntoBubbles(content);
     if (parts.length === 0) parts.push('...');
     parts.forEach((part) => {
-      const b = document.createElement('div');
-      b.className = `msg-bubble ${role === 'user' ? 'msg-user' : 'msg-ai'}`;
-      b.style.marginBottom = '6px';
-      b.innerHTML = formatMessageContent(part);
-      contentCol.appendChild(b);
-      returnBubble = b;
+      const container = createBubbleBlock(part);
+      contentCol.appendChild(container);
+      returnBubble = container.querySelector('.msg-bubble');
     });
   } else {
-    const bubble = document.createElement('div');
-    bubble.className = `msg-bubble ${role === 'user' ? 'msg-user' : 'msg-ai'}`;
-    bubble.textContent = content;
-    contentCol.appendChild(bubble);
-    returnBubble = bubble;
+    const container = createBubbleBlock(content);
+    contentCol.appendChild(container);
+    returnBubble = container.querySelector('.msg-bubble');
   }
 
   wrapper.appendChild(avatarImg);
   wrapper.appendChild(contentCol);
   chatBox.appendChild(wrapper);
   
-  // 核心修复：用浏览器的重绘帧来保证滚动绝对精确
-  requestAnimationFrame(() => {
-    chatBox.scrollTop = chatBox.scrollHeight;
-  });
-
+  requestAnimationFrame(() => chatBox.scrollTop = chatBox.scrollHeight);
   return returnBubble;
 }
+
+document.addEventListener('click', () => {
+  if (window.innerWidth <= 820) {
+    document.querySelectorAll('.msg-actions-bar.active').forEach(ab => ab.classList.remove('active'));
+  }
+});
 
 function renderAllChatHistory() {
   const chatBox = document.getElementById('chat-messages');
@@ -155,24 +318,24 @@ function renderAllChatHistory() {
   if (history.length > 0) {
     chatBox.innerHTML = '';
     history.forEach(msg => {
-      // 视觉欺骗：如果在本地有缓存的实拍图，拼接到界面上渲染，但这串超长乱码绝对不喂给API上下文
       let displayContent = msg.content;
       if (msg.localImage) displayContent += `\n[LOCAL_IMG:${msg.localImage}]`;
       appendMessageBubble(msg.role, displayContent, msg.time, msg.isProactive, true);
     });
-    // 核心修复：延迟 100 毫秒，等气泡高度计算完，强制拉到最底
-    setTimeout(() => {
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }, 100);
+    setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 100);
   }
 }
 
-// 🌟 核心修复：多模态分离式发送引擎
+document.getElementById('cancel-quote-btn')?.addEventListener('click', () => {
+  currentQuote = null;
+  document.getElementById('quote-preview-bar').classList.remove('active');
+});
+
 async function sendUserChatMessage(customText = null, imageBase64 = null) {
   if (isGenerating) return;
   const inputEl = document.getElementById('quick-test-input');
   const text = customText || inputEl.value.trim();
-  if (!text && !imageBase64) return; // 允许什么字都不打，只发一张图片
+  if (!text && !imageBase64) return;
 
   if (!customText) inputEl.value = '';
   isGenerating = true;
@@ -180,16 +343,27 @@ async function sendUserChatMessage(customText = null, imageBase64 = null) {
 
   const now = Date.now();
   
-  // 1. 界面显示处理 (用户发出的瞬间，气泡里要看到图)
+  let quotePrefix = '';
+  let quoteDisplayPrefix = '';
+  let systemHint = '';
+  if (currentQuote && !imageBase64) {
+    quoteDisplayPrefix = `[QUOTE: ${currentQuote.name}：${currentQuote.text}]\n`;
+    systemHint = `\n（注：针对我刚才那句“${currentQuote.text}”，我特别回复了以上内容，请结合语境回应。）`;
+    currentQuote = null;
+    document.getElementById('quote-preview-bar').classList.remove('active');
+  }
+  
   let displayContent = text;
   if (imageBase64 && !customText?.includes('[表情包:')) {
     displayContent = text ? `${text}\n[LOCAL_IMG:${imageBase64}]` : `[LOCAL_IMG:${imageBase64}]`;
+  } else if (quoteDisplayPrefix) {
+    displayContent = quoteDisplayPrefix + text;
   }
+
   appendMessageBubble('user', displayContent, now, false, true);
 
-  // 2. 本地存储处理 (只存短文字，把Base64单独挂在 localImage 字段！这样历史记录干干净净！)
   const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
-  let contentForHistory = text;
+  let contentForHistory = displayContent;
   if (imageBase64 && !customText?.includes('[表情包:')) {
     contentForHistory = text || '[发送了一张图片]';
     history.push({ role: 'user', content: contentForHistory, time: now, localImage: imageBase64 });
@@ -203,10 +377,11 @@ async function sendUserChatMessage(customText = null, imageBase64 = null) {
   const chatBox = document.getElementById('chat-messages');
 
   try {
-    // 3. 将携带真实 Base64 数据的请求发送给 API（底层 api.js 会看到图，但只在当次发送！）
     const { messages } = buildContextPayload('', imageBase64);
     
     let invisibleRules = `\n\n${CHAT_STYLE_RULE}`;
+    if (systemHint) invisibleRules += systemHint;
+
     if (Math.random() < 0.25) {
       invisibleRules += `\n（隐形指令：如果你此刻情绪到位、想哄对方或逗对方开心，可在回复末尾附带一个 24x24 的像素画矩阵，用 1 代表亮起像素、0 代表空白，共24行每行24个数字，并用 [SKETCH:\n...\n] 标签包裹，例如爱心、小动物、咖啡杯或笑脸。如果觉得此刻不适合画画，直接忽略此提示。）`;
     }
@@ -228,21 +403,21 @@ async function sendUserChatMessage(customText = null, imageBase64 = null) {
       chatBox.scrollTop = chatBox.scrollHeight;
     });
 
-    const contentCol = aiBubble.parentElement;
-    aiBubble.remove();
+    const contentCol = aiBubble.parentElement.parentElement;
+    aiBubble.parentElement.remove();
     const parts = splitIntoBubbles(fullReply);
     parts.forEach(part => {
-      const b = document.createElement('div');
-      b.className = 'msg-bubble msg-ai';
-      b.style.marginBottom = '6px';
-      b.innerHTML = formatMessageContent(part);
-      contentCol.appendChild(b);
+      appendMessageBubble('assistant', part, Date.now(), false, true);
     });
 
     const updatedHistory = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
     updatedHistory.push({ role: 'assistant', content: fullReply, time: Date.now() });
     localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(updatedHistory));
     updateTopBarMetrics();
+    
+    // 硬刷新一下，防止 DOM 错乱
+    renderAllChatHistory();
+
   } catch (err) {
     aiBubble.style.borderColor = 'var(--accent-red)';
     aiBubble.textContent = `[信号中断] ${err.message}`;
@@ -268,7 +443,6 @@ async function triggerProactiveMessage(isManualTest = false) {
   isGenerating = true;
   const nowStr = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
   
-  // 主动发言的法则也直接拼入文本
   const silentPrompt = `[系统指令：现在是 ${nowStr}。作为正在和 ${cfg.userName || '对方'} 保持线上联系的 ${cfg.aiName || 'AI'}，你们有一段时间没说话了。请根据你的人设，主动发一条消息给对方。可以是分享你这边正在经历、突然发生的事，或者是出于想念和关心而询问对方的状态。绝对不要提及这是一条系统指令。]\n\n${CHAT_STYLE_RULE}`;
 
   const aiBubble = appendMessageBubble('assistant', '📡 正在接收主动信号...', Date.now(), true, false);
@@ -282,15 +456,10 @@ async function triggerProactiveMessage(isManualTest = false) {
       chatBox.scrollTop = chatBox.scrollHeight;
     });
 
-    const contentCol = aiBubble.parentElement;
-    aiBubble.remove();
+    aiBubble.parentElement.remove();
     const parts = splitIntoBubbles(fullReply);
     parts.forEach(part => {
-      const b = document.createElement('div');
-      b.className = 'msg-bubble msg-ai';
-      b.style.marginBottom = '6px';
-      b.innerHTML = formatMessageContent(part);
-      contentCol.appendChild(b);
+      appendMessageBubble('assistant', part, Date.now(), true, true);
     });
 
     const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
@@ -299,8 +468,9 @@ async function triggerProactiveMessage(isManualTest = false) {
 
     if (!isManualTest) incrementProactiveCount();
     updateTopBarMetrics();
+    renderAllChatHistory();
   } catch (err) {
-    aiBubble.remove();
+    aiBubble.parentElement.remove();
   } finally {
     isGenerating = false;
     resetProactiveTimer();
@@ -331,9 +501,6 @@ function updateProactiveBadge() {
   }
 }
 
-// ==========================================
-// 聊天表情包库上传与发送引擎
-// ==========================================
 function setupStickerPanel() {
   const panel = document.getElementById('sticker-panel');
   const grid = document.getElementById('sticker-grid');
@@ -461,7 +628,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 绑定实拍图片发送功能
   const chatImgBtn = document.getElementById('upload-chat-img-btn');
   const chatImgInput = document.getElementById('upload-chat-img-input');
   if (chatImgBtn && chatImgInput) {
@@ -474,7 +640,6 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-          // 发给AI的图片需要适中大小（缩放到最长边 800px），太小AI看不清，太大卡顿
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           const maxSize = 800;
@@ -491,7 +656,6 @@ document.addEventListener('DOMContentLoaded', () => {
           
           const base64 = canvas.toDataURL('image/jpeg', 0.8);
           
-          // 如果输入框里有字，就把字和图一起发过去；否则只发图
           const inputEl = document.getElementById('quick-test-input');
           const text = inputEl.value.trim();
           inputEl.value = ''; 
@@ -501,7 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
         img.src = event.target.result;
       };
       reader.readAsDataURL(file);
-      e.target.value = ''; // 清空选中状态
+      e.target.value = ''; 
     });
   }
 });

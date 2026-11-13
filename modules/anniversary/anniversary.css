@@ -33,10 +33,13 @@
    ========================================== */
 .anni-list-bar {
   display: flex;
+  align-items: center;
+  flex-shrink: 0;      /* 核心修复：绝不允许被下方内容压扁！ */
+  min-height: 38px;    /* 给标签按钮留足舒适高度 */
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 8px;
-  margin-bottom: 12px;
+  padding: 2px 0 8px 0;
+  margin-bottom: 10px;
   border-bottom: 1px dashed var(--border-dim);
 }
 .anni-list-bar::-webkit-scrollbar { height: 4px; }
