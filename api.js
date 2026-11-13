@@ -470,3 +470,65 @@ async function callTacticalStreamAPI(messages, onChunk) {
   }
   return fullText || '（信号接收为空）';
 }
+// ==========================================
+// 手机端 App 化：底部导航栏切换引擎
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+  const tabs = document.querySelectorAll('.mobile-tab-bar .tab-item');
+  const panels = {
+    'panel-chat': document.getElementById('panel-chat'),
+    'panel-diary': document.getElementById('panel-diary'),
+    'panel-reading': document.getElementById('panel-reading'),
+    'panel-mood': document.querySelector('.sub-grid') // 特殊处理：mood 和 tasks 绑在一起
+  };
+
+  function switchTab(targetId) {
+    // 如果是在电脑宽屏上，这个逻辑不执行
+    if (window.innerWidth > 820) return;
+
+    // 1. 按钮变色
+    tabs.forEach(t => t.classList.remove('active'));
+    const activeTab = document.querySelector(`.tab-item[data-target="${targetId}"]`);
+    if (activeTab) activeTab.classList.add('active');
+
+    // 2. 隐藏所有面板
+    document.querySelectorAll('.tac-panel').forEach(p => p.classList.remove('mobile-active'));
+    document.querySelector('.sub-grid')?.classList.remove('mobile-active-combo');
+
+    // 3. 显示目标面板
+    if (targetId === 'panel-mood') {
+      // 状态页特殊处理：把心情和任务组合显示
+      panels['panel-mood'].classList.add('mobile-active-combo');
+    } else if (panels[targetId]) {
+      panels[targetId].classList.add('mobile-active');
+      
+      // 切换到聊天页时，强行把滚动条拉到底
+      if (targetId === 'panel-chat') {
+        const chatBox = document.getElementById('chat-messages');
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+      }
+    }
+  }
+
+  // 绑定点击事件
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      switchTab(tab.dataset.target);
+    });
+  });
+
+  // 页面初次加载时，如果是手机端，强制切到通讯页
+  setTimeout(() => {
+    if (window.innerWidth <= 820) {
+      switchTab('panel-chat');
+    }
+  }, 100);
+
+  // 监听屏幕尺寸变化，如果从手机竖屏切回电脑，清理掉手机端的隐藏类名
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 820) {
+      document.querySelectorAll('.tac-panel').forEach(p => p.classList.remove('mobile-active'));
+      document.querySelector('.sub-grid')?.classList.remove('mobile-active-combo');
+    }
+  });
+});
