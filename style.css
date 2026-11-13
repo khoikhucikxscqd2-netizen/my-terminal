@@ -573,7 +573,7 @@ input:focus, textarea:focus, select:focus {
     letter-spacing: 0;
   }
   .terminal-metrics .metric-item {
-    font-size: 10px;
+    display: none;
   }
 
   /* 通讯面板标题栏强制分两排，彻底治好竖排挤字 */

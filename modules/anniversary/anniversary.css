@@ -1,0 +1,156 @@
+/* ==========================================
+   扩展终端 (Hub) 样式
+   ========================================== */
+.ext-module-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.ext-module-card:hover {
+  border-color: var(--accent-amber);
+  background: rgba(0, 230, 118, 0.05);
+  transform: translateY(-2px);
+}
+.ext-module-card.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+.ext-module-card.locked:hover { transform: none; border-color: var(--border-dim); background: transparent; }
+
+.ext-icon { font-size: 28px; }
+.ext-name { font-size: 13px; color: var(--text-main); font-weight: 600; font-family: var(--font-mono); }
+
+/* ==========================================
+   多纪念日标签列表 (Horizontal Scroll)
+   ========================================== */
+.anni-list-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px dashed var(--border-dim);
+}
+.anni-list-bar::-webkit-scrollbar { height: 4px; }
+.anni-list-bar::-webkit-scrollbar-thumb { background: var(--border-dim); border-radius: 4px; }
+
+.anni-chip {
+  white-space: nowrap;
+  padding: 4px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-dim);
+  border-radius: 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.anni-chip.active {
+  color: var(--accent-amber);
+  border-color: var(--accent-amber);
+  background: rgba(0, 230, 118, 0.08);
+  font-weight: 600;
+}
+.anni-add-btn {
+  white-space: nowrap;
+  padding: 4px 12px;
+  background: transparent;
+  border: 1px dashed var(--text-muted);
+  border-radius: 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.anni-add-btn:hover { color: var(--text-main); border-color: var(--text-main); }
+
+/* ==========================================
+   纪念日相框专属样式
+   ========================================== */
+.anni-frame-box {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 170px;
+  border-radius: 10px;
+  border: 1px solid var(--border-bright);
+  background: var(--bg-input);
+  margin-bottom: 14px;
+}
+
+.anni-bg-layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.55;
+  transition: all 0.3s ease;
+}
+
+.anni-glass-card {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  background: rgba(10, 15, 13, 0.72);
+  backdrop-filter: blur(5px);
+  padding: 14px 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border-bright);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.anni-title-text {
+  font-size: 13px;
+  color: var(--accent-amber);
+  font-family: var(--font-mono);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.anni-days-num {
+  font-size: 30px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.anni-days-num span {
+  font-size: 13px;
+  font-weight: 400;
+  color: #cccccc;
+}
+
+.anni-sub-hint {
+  font-size: 11px;
+  color: #bbbbbb;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+}
+
+/* 浅色皮肤下相框文字卡片的柔和适配 */
+[data-theme="forest-cottage"] .ext-module-card { background: rgba(255,255,255,0.4); }
+[data-theme="cloud-puppy"] .ext-module-card { background: rgba(255,255,255,0.6); }
+
+[data-theme="forest-cottage"] .anni-glass-card,
+[data-theme="cloud-puppy"] .anni-glass-card {
+  background: rgba(255, 255, 255, 0.85);
+}
+[data-theme="forest-cottage"] .anni-days-num,
+[data-theme="cloud-puppy"] .anni-days-num {
+  color: var(--text-main);
+}
+[data-theme="forest-cottage"] .anni-days-num span,
+[data-theme="forest-cottage"] .anni-sub-hint,
+[data-theme="cloud-puppy"] .anni-days-num span,
+[data-theme="cloud-puppy"] .anni-sub-hint {
+  color: var(--text-muted);
+}

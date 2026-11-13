@@ -6,6 +6,7 @@
   <title>TACTICAL TERMINAL</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="themes.css">
+  <link rel="stylesheet" href="modules/anniversary/anniversary.css">
 </head>
 <body>
   <!-- 顶部终端状态栏 -->
@@ -16,6 +17,7 @@
     </div>
     <div class="terminal-metrics">
       <span class="metric-item">MEM LOAD: <strong id="token-counter">0 / 100,000</strong> TKN</span>
+      <button class="icon-btn" id="open-modules-btn" title="扩展功能模块">❖ 扩展</button>
       <button class="icon-btn" id="open-settings-btn" title="终端后台配置">🔧 配置</button>
     </div>
   </header>
@@ -154,6 +156,97 @@
 
   <!-- ================= 以下为所有悬浮弹窗 ================= -->
 
+<!-- ================= 以下为所有悬浮弹窗 ================= -->
+
+  <!-- 0-1. 扩展中控台 (Extension Hub) -->
+  <div class="modal-backdrop hidden" id="extension-hub-modal" style="z-index: 110;">
+    <div class="tac-modal" style="max-width: 400px;">
+      <div class="panel-header modal-header">
+        <span class="panel-tag">[HUB-00]</span>
+        <h2>扩展终端 // EXTENSIONS</h2>
+        <button class="close-btn" id="close-hub-btn">✕</button>
+      </div>
+      <div class="modal-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 20px;">
+        
+        <!-- 已实装：纪念日模块 -->
+        <div class="ext-module-card" id="btn-open-anni">
+          <div class="ext-icon">📅</div>
+          <div class="ext-name">纪念日档案</div>
+        </div>
+        
+        <!-- 待开发占位模块：为未来画大饼 -->
+        <div class="ext-module-card locked" title="建设中...">
+          <div class="ext-icon">🎟️</div>
+          <div class="ext-name">积分兑换(待建)</div>
+        </div>
+        <div class="ext-module-card locked" title="建设中...">
+          <div class="ext-icon">📮</div>
+          <div class="ext-name">时空信箱(待建)</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 0-2. 扩展模块：纪念日相框 (多重档案版) -->
+  <div class="modal-backdrop hidden" id="anniversary-modal" style="z-index: 120;">
+    <div class="tac-modal" style="max-width: 480px;">
+      <div class="panel-header modal-header">
+        <span class="panel-tag">[MEMO-00]</span>
+        <h2>纪念日档案 // MILESTONES</h2>
+        <button class="close-btn" id="close-anni-modal-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- 多纪念日列表横向滑动栏 -->
+        <div class="anni-list-bar" id="anni-list-container">
+          <!-- JS 动态渲染标签 -->
+        </div>
+
+        <!-- 相框预览区 -->
+        <div class="anni-frame-box">
+          <div class="anni-bg-layer" id="anniversary-bg"></div>
+          <div class="anni-glass-card">
+            <div class="anni-title-text" id="anniversary-title">相识纪念日</div>
+            <div class="anni-days-num" id="anniversary-countdown">0 <span>天</span></div>
+            <div class="anni-sub-hint" id="anniversary-hint">起始日: 2018-01-01</div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>纪念日名称</label>
+            <input type="text" id="anni-title-input" placeholder="如: 相识纪念日、生日" maxlength="12">
+          </div>
+          <div class="form-group">
+            <label>日期</label>
+            <input type="date" id="anni-date-input">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>计算方式</label>
+            <select id="anni-mode-input">
+              <option value="countup">正数日（已过去多少天）</option>
+              <option value="yearly">每年倒计时（如生日/周年）</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>相框背景</label>
+            <input type="file" id="anni-img-input" accept="image/*" style="display: none;">
+            <button class="tac-btn" id="anni-upload-btn" style="width: 100%;">📸 更换照片</button>
+          </div>
+        </div>
+
+        <p class="slot-hint">// 平日零消耗；北京时间每日 00:00 若命中纪念日，将在聊天频道主动触发专属问候。</p>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between;">
+        <button class="tac-btn" id="delete-anni-btn" style="color: var(--accent-red); border-color: var(--accent-red);">🗑️ 删除此项</button>
+        <button class="tac-btn primary" id="save-anni-btn">💾 保存当前项</button>
+      </div>
+    </div>
+  </div>
   <!-- 1. 扳手后台配置弹窗 -->
   <div class="modal-backdrop hidden" id="settings-modal">
     <div class="tac-modal">
@@ -394,5 +487,6 @@
   <script src="daily.js"></script>
   <script src="diary.js"></script>
   <script src="reading.js"></script>
+  <script src="modules/anniversary/anniversary.js"></script>
 </body>
 </html>
