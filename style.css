@@ -402,9 +402,9 @@ input:focus, textarea:focus, select:focus {
   }
 /* 聊天框固定半屏高度，物理封顶锁死，内部独立滚动 */
   .right-col #panel-chat {
-    height: 55vh !important; 
-    max-height: 55vh !important;
-    min-height: 380px !important; 
+    height: 82vh !important; 
+    max-height: 82vh !important;
+    min-height: 560px !important; 
     overflow: hidden !important;
   }
   #panel-chat .panel-body {
