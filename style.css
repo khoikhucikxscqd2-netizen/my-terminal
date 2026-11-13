@@ -437,22 +437,33 @@ input:focus, textarea:focus, select:focus {
     padding-bottom: 70px !important; /* 给底部导航栏留出空间，防止遮挡内容 */
   }
 
-  /* -------------------------------------
+/* -------------------------------------
      合并“情绪”和“任务”：当激活 mood 标签时，让它们俩上下堆叠显示
      ------------------------------------- */
   .sub-grid.mobile-active-combo {
     display: flex !important;
     flex-direction: column !important;
     height: 100% !important;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    padding-bottom: 70px !important; /* 避开底部导航栏 */
   }
   .sub-grid.mobile-active-combo #panel-mood,
   .sub-grid.mobile-active-combo #panel-tasks {
     display: flex !important;
-    position: relative; /* 取消绝对定位 */
-    flex: 1;
+    position: relative; /* 必须取消绝对定位，让它们按 flex 堆叠 */
+    flex: none !important; /* 不用平分高度，根据内容自适应 */
     height: auto !important;
-    border: 1px solid var(--border-dim) !important; /* 恢复边框 */
+    border: 1px solid var(--border-dim) !important;
+    border-radius: 4px !important;
     margin: 8px;
+  }
+  /* 在手机组合视图下，依然让面板内部的内容可见并展开 */
+  .sub-grid.mobile-active-combo #panel-mood .panel-body,
+  .sub-grid.mobile-active-combo #panel-tasks .panel-body {
+    overflow: visible !important;
+    height: auto !important;
+    padding-bottom: 12px !important;
   }
   /* -------------------------------------
      底部导航栏样式
