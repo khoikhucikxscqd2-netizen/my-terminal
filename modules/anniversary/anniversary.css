@@ -154,3 +154,33 @@
 [data-theme="cloud-puppy"] .anni-sub-hint {
   color: var(--text-muted);
 }
+/* ==========================================
+   手机端窄屏专属适配 (<= 820px)
+   ========================================== */
+@media (max-width: 820px) {
+  /* 扩展中控台弹窗内边距收紧，卡片更紧凑 */
+  #extension-hub-modal .modal-body {
+    padding: 14px !important;
+    gap: 10px !important;
+  }
+
+  /* 纪念日弹窗里的双列输入框，在手机上自动变成单列上下排列，不再挤成一团 */
+  #anniversary-modal .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* 手机上相框高度稍微调紧凑一点，留出更多空间给下方输入框 */
+  #anniversary-modal .anni-frame-box {
+    min-height: 135px;
+    margin-bottom: 10px;
+  }
+
+  #anniversary-modal .anni-glass-card {
+    padding: 10px 20px;
+  }
+
+  #anniversary-modal .anni-days-num {
+    font-size: 24px;
+  }
+}
