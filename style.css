@@ -400,11 +400,35 @@ input:focus, textarea:focus, select:focus {
     height: auto !important;
     overflow: visible !important;
   }
-
-  /* 聊天框固定高度，内部独立滚动 */
+/* 聊天框固定半屏高度，物理封顶锁死，内部独立滚动 */
   .right-col #panel-chat {
-    height: 65vh !important; 
-    min-height: 480px !important; 
+    height: 55vh !important; 
+    max-height: 55vh !important;
+    min-height: 380px !important; 
+    overflow: hidden !important;
+  }
+  #panel-chat .panel-body {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .chat-main-col {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  #chat-messages {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    padding-bottom: 10px !important;
+  }
+  .draw-side-col {
+    width: 100% !important;
   }
   
   /* 其他面板外框随内容撑开 */
@@ -925,15 +949,6 @@ input:focus, textarea:focus, select:focus {
   width: 100%;
 }
 
-/* 手机端窄屏自动恢复上下排列，防止挤爆 */
-@media (max-width: 820px) {
-  .chat-split-wrapper {
-    flex-direction: column !important;
-  }
-  .draw-side-col {
-    width: 100%;
-  }
-}
 /* ==========================================
    修复版：1:1 真实正方形微型像素屏幕
    ========================================== */
