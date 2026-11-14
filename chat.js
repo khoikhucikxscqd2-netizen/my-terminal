@@ -630,10 +630,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const blob = new Blob([history], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${aiLabel}_COMMS_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
+    const channelName = document.getElementById('current-chat-title')?.textContent.replace(/[\/\\\s]/g, '_') || 'MAIN';
+    a.download = `${aiLabel}_${channelName}_${new Date().toISOString().slice(0, 10)}.json`;    a.click();
   });
-
   document.getElementById('clear-chat-btn')?.addEventListener('click', () => {
     if (confirm('确认清空当前所有本地聊天记录？')) {
       localStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);

@@ -1614,3 +1614,15 @@ input:focus, textarea:focus, select:focus {
   display: flex;
   gap: 4px;
 }
+/* ==========================================
+   手机端抽屉底部避让补丁（防止新建按钮被底部导航栏遮挡）
+   ========================================== */
+@media (max-width: 820px) {
+  .chat-drawer {
+    bottom: 64px !important; /* 抬高抽屉底边，完美避开 56px 的手机底部导航栏 */
+  }
+  .drawer-footer {
+    padding-bottom: 14px !important;
+    flex-shrink: 0;
+  }
+}
