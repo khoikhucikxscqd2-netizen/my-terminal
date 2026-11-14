@@ -86,19 +86,43 @@ function renderCapsuleList() {
 
     const dateStr = new Date(cap.createdAt).toLocaleDateString('zh-CN');
     
+// 🌟 新增：在卡片里加入删除按钮，如果已拆封就直接用小垃圾桶，如果未拆封也可以删
     return `
-      <div class="capsule-card ${cap.status}" data-id="${cap.id}">
-        <div class="capsule-info">
-          <div class="capsule-title">📮 ${cap.title}</div>
-          <div class="capsule-meta">寄出时间: ${dateStr}</div>
+      <div class="capsule-card-wrapper" style="position: relative;">
+        <div class="capsule-card ${cap.status}" data-id="${cap.id}">
+          <div class="capsule-info">
+            <div class="capsule-title">📮 ${cap.title}</div>
+            <div class="capsule-meta">寄出时间: ${dateStr}</div>
+          </div>
+          <div class="capsule-right-col" style="display: flex; align-items: center; gap: 8px;">
+            ${badgeHtml}
+            <button class="capsule-delete-btn" data-id="${cap.id}" title="删除这封信">✕</button>
+          </div>
         </div>
-        ${badgeHtml}
       </div>
     `;
   }).join('');
 
   container.querySelectorAll('.capsule-card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      // 🌟 新增：如果点的是删除按钮，就执行删除逻辑并阻止打开阅读器
+      if (e.target.classList.contains('capsule-delete-btn')) {
+        e.stopPropagation();
+        const id = e.target.dataset.id;
+        const targetCap = list.find(c => c.id === id);
+        const confirmMsg = targetCap.status === 'locked' 
+          ? `这封信还没拆开（${targetCap.title}），确定要现在就销毁它吗？` 
+          : `确定要永久删除这封已拆开的信（${targetCap.title}）吗？`;
+        
+        if (confirm(confirmMsg)) {
+          const newList = list.filter(c => c.id !== id);
+          saveCapsules(newList);
+          renderCapsuleList();
+        }
+        return;
+      }
+
+      // 如果点的不是删除按钮，走原来的打开逻辑
       const id = card.dataset.id;
       const cap = list.find(c => c.id === id);
       if (cap.status === 'locked') return alert(`时机未到。这封信被加密锁死，直到 ${cap.unlockDateKey} 才能拆开。`);

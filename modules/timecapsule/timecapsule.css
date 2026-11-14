@@ -141,3 +141,32 @@
   70% { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0); }
   100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
 }
+/* 🌟 新增：信件删除按钮样式 */
+.capsule-delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  opacity: 0.5;
+  transition: all 0.2s;
+}
+.capsule-delete-btn:hover {
+  color: var(--accent-red);
+  opacity: 1;
+}
+
+/* 电脑端鼠标悬浮整张卡片时，删除按钮稍微变亮，暗示可点击 */
+.capsule-card:hover .capsule-delete-btn {
+  opacity: 0.8;
+}
+
+@media (max-width: 820px) {
+  /* 手机端按钮稍微大一点好按 */
+  .capsule-delete-btn {
+    font-size: 16px;
+    padding: 6px 10px;
+    opacity: 0.7; /* 手机端没有悬停，所以常亮一点 */
+  }
+}
