@@ -5,7 +5,11 @@
 const STORAGE_KEYS = {
   CONFIG: 'ezekiel_tac_config',
   MEMORY_POOL: 'ezekiel_memory_pool', 
-  CHAT_HISTORY: 'ezekiel_chat_history'
+  // 🌟 魔法核心：动态劫持聊天室的存储键
+  get CHAT_HISTORY() {
+    const sid = localStorage.getItem('ezekiel_active_session') || 'default';
+    return sid === 'default' ? 'ezekiel_chat_history' : 'ezekiel_chat_history_' + sid;
+  }
 };
 
 const DEFAULT_AVATAR = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0icmdiYSgwLCAyMzAsIDExOCwgMC4xKSIvPjwvc3ZnPg==';
@@ -655,7 +659,8 @@ function getInjectableMemories() {
 // 2. 检查 50,000 Token 水位线并更新进度条
 function checkMemoryWatermark() {
   const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
-  const lastTime = Number(localStorage.getItem('ezekiel_memory_cursor') || 0);
+  const activeId = localStorage.getItem('ezekiel_active_session') || 'default';
+  const lastTime = Number(localStorage.getItem('ezekiel_memory_cursor_' + activeId) || 0);
   const unarchived = history.filter(m => m.time > lastTime);
   
   let tokenCount = 0;
@@ -732,7 +737,8 @@ ${chatText}`;
     localStorage.setItem('ezekiel_long_term_memories', JSON.stringify(mems));
     
     // 更新游标为最后一条已归档消息的时间戳
-    localStorage.setItem('ezekiel_memory_cursor', unarchived[unarchived.length - 1].time.toString());
+    const activeId = localStorage.getItem('ezekiel_active_session') || 'default';
+    localStorage.setItem('ezekiel_memory_cursor_' + activeId, unarchived[unarchived.length - 1].time.toString());
     
     renderMemoryList();
     checkMemoryWatermark();
@@ -832,4 +838,143 @@ document.addEventListener('DOMContentLoaded', () => {
     alert('✓ 存档已彻底清空！终端即将重启为初始状态...');
     window.location.reload();
   });
+});
+// ==========================================
+// 阶段十核心：多通讯频道 (Sessions) 管理系统
+// ==========================================
+function getSessions() {
+  const saved = localStorage.getItem('ezekiel_chat_sessions');
+  if (!saved) return [{ id: 'default', name: '主频道 // MAIN', time: Date.now() }];
+  return JSON.parse(saved);
+}
+
+function saveSessions(sessions) {
+  localStorage.setItem('ezekiel_chat_sessions', JSON.stringify(sessions));
+}
+
+function getActiveSessionId() {
+  return localStorage.getItem('ezekiel_active_session') || 'default';
+}
+
+function setActiveSessionId(id) {
+  localStorage.setItem('ezekiel_active_session', id);
+}
+
+function renderSessionList() {
+  const container = document.getElementById('session-list-container');
+  const titleEl = document.getElementById('current-chat-title');
+  if (!container) return;
+
+  const sessions = getSessions();
+  const activeId = getActiveSessionId();
+
+  // 更新聊天框顶部的标题
+  const activeSession = sessions.find(s => s.id === activeId) || sessions[0];
+  if (titleEl) titleEl.textContent = activeSession.name;
+
+  container.innerHTML = sessions.map(s => {
+    const d = new Date(s.time || Date.now());
+    const timeStr = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    return `
+      <div class="session-item ${s.id === activeId ? 'active' : ''}" onclick="switchSession('${s.id}')">
+        <div class="session-info">
+          <span class="session-name">${s.name}</span>
+          <span class="session-time">建于: ${timeStr}</span>
+        </div>
+        <div class="session-actions">
+          <button class="mini-btn" onclick="renameSession(event, '${s.id}')" title="重命名">✏️</button>
+          ${s.id !== 'default' ? `<button class="mini-btn" style="color:var(--accent-red);border-color:var(--accent-red);" onclick="deleteSession(event, '${s.id}')" title="删除频道">✕</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.switchSession = function(id) {
+  if (id === getActiveSessionId()) return; // 已经是当前频道，不理它
+  
+  setActiveSessionId(id);
+  renderSessionList();
+  
+  // 切换频道后，清空并重新渲染聊天框
+  const chatBox = document.getElementById('chat-messages');
+  if (chatBox) chatBox.innerHTML = '<div class="sys-msg">// 频道信道切换中...</div>';
+  
+  setTimeout(() => {
+    if (typeof renderAllChatHistory === 'function') renderAllChatHistory();
+    if (typeof updateTopBarMetrics === 'function') updateTopBarMetrics();
+    if (typeof checkMemoryWatermark === 'function') checkMemoryWatermark(); // 更新属于这个频道的进度条
+  }, 100);
+
+  // 手机端点完自动收起抽屉
+  if (window.innerWidth <= 820) {
+    document.getElementById('chat-session-drawer')?.classList.add('hidden');
+  }
+};
+
+window.renameSession = function(e, id) {
+  e.stopPropagation();
+  const sessions = getSessions();
+  const target = sessions.find(s => s.id === id);
+  if (!target) return;
+  const newName = prompt('给这个频道起个新名字（如：电影讨论、睡前闲聊）：', target.name);
+  if (newName && newName.trim()) {
+    target.name = newName.trim();
+    saveSessions(sessions);
+    renderSessionList();
+  }
+};
+
+window.deleteSession = function(e, id) {
+  e.stopPropagation();
+  if (id === 'default') return; // 主频道不许删
+  if (!confirm('确定要删除这个频道及里面的所有聊天记录吗？(不可恢复)')) return;
+
+  let sessions = getSessions();
+  sessions = sessions.filter(s => s.id !== id);
+  saveSessions(sessions);
+
+  // 绝不留垃圾：清理对应频道的聊天缓存和记忆游标
+  localStorage.removeItem('ezekiel_chat_history_' + id);
+  localStorage.removeItem('ezekiel_memory_cursor_' + id);
+
+  // 如果删的是当前正在看的频道，强制切回主频道
+  if (getActiveSessionId() === id) {
+    switchSession('default');
+  } else {
+    renderSessionList();
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const drawer = document.getElementById('chat-session-drawer');
+  const openBtn = document.getElementById('open-chat-drawer-btn');
+  const closeBtn = document.getElementById('close-chat-drawer-btn');
+  const newBtn = document.getElementById('new-session-btn');
+
+  openBtn?.addEventListener('click', () => {
+    renderSessionList(); 
+    drawer?.classList.remove('hidden');
+  });
+
+  closeBtn?.addEventListener('click', () => {
+    drawer?.classList.add('hidden');
+  });
+
+  newBtn?.addEventListener('click', () => {
+    const name = prompt('输入新频道名称（如：副本剧情、深层对话）：', '新的频道');
+    if (name && name.trim()) {
+      const sessions = getSessions();
+      if (sessions.length >= 10) return alert('最多只能创建 10 个频道哦，请先删除没用的。');
+
+      const newId = 's_' + Date.now();
+      // 新建频道插在主频道下面
+      sessions.splice(1, 0, { id: newId, name: name.trim(), time: Date.now() });
+      saveSessions(sessions);
+      switchSession(newId); // 创建完直接跳过去
+    }
+  });
+
+  // 网页刚打开时渲染一次
+  renderSessionList();
 });

@@ -70,14 +70,31 @@
       <section class="tac-panel chat-panel" id="panel-chat">
         <div class="panel-header">
           <span class="panel-tag">[COM-03]</span>
-          <h2>实时通讯 // DIRECT LINK</h2>
+          <button class="icon-btn" id="open-chat-drawer-btn" style="padding: 2px 6px; margin-right: 6px; font-size: 14px;" title="展开频道列表">☰</button>
+          <h2 id="current-chat-title">主频道 // MAIN</h2>
+
           <button class="mini-btn" id="test-ping-btn" title="立刻测试一次对方主动发消息">戳戳</button>
           <button class="mini-btn" id="export-chat-btn" title="导出记录">导出</button>
           <button class="mini-btn" id="clear-chat-btn" title="清空记录">清空</button>
           <span class="panel-status" id="proactive-indicator">AUTO-PING: 0/5</span>
         </div>
         
-        <div class="panel-body chat-split-wrapper" id="chat-container">
+        <div class="panel-body chat-split-wrapper" id="chat-container" style="position: relative;">
+          
+          <!-- 新增：侧边抽屉 (默认隐藏) -->
+          <div id="chat-session-drawer" class="chat-drawer hidden">
+            <div class="drawer-header">
+              <span style="color: var(--accent-amber); font-weight: bold; font-family: var(--font-mono); font-size: 12px;">通讯频道 // SESSIONS</span>
+              <button class="close-btn" id="close-chat-drawer-btn">✕</button>
+            </div>
+            <div class="drawer-list" id="session-list-container">
+              <p class="slot-hint" style="margin-top: 20px;">数据加载中...</p>
+            </div>
+            <div class="drawer-footer" style="padding: 12px; border-top: 1px dashed var(--border-dim); background: var(--bg-panel);">
+              <button class="tac-btn primary" id="new-session-btn" style="width: 100%;">+ 新建通讯频道</button>
+            </div>
+          </div>
+
           <!-- 左侧：主聊天与输入区 -->
           <div class="chat-main-col">
             <div class="chat-messages" id="chat-messages">
