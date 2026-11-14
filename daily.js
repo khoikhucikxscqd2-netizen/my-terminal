@@ -295,13 +295,17 @@ async function generateDailyTasks(forceRefresh = false) {
       ? `${userName} 设定的近期目标是：【${data.userGoals}】。请结合这些目标以及你们之间的日常互动，` 
       : `请结合你们之间的日常关怀与互动，`;
 
-    const prompt = `${goalPrompt}以你（${aiName}）的口吻为 ${userName} 派发 3 个今天可以轻松完成的轻量小任务（每个任务控制在18字以内）。严格只输出纯 JSON 数组，格式如：["任务一内容", "任务二内容", "任务三内容"]。`;
+// 🌟 新增：生成精准的现实日期与星期几
+    const now = new Date();
+    const dateAndWeek = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 (星期${'日一二三四五六'[now.getDay()]})`;
+
+    const prompt = `【现实时间：${dateAndWeek}】\n${goalPrompt}以你（${aiName}）的口吻为 ${userName} 派发 3 个今天可以轻松完成的轻量小任务（每个任务控制在18字以内）。注意结合今天是星期几（如果是周末就派发休息、宅家或放松任务，不要提上班工作）。严格只输出纯 JSON 数组，格式如：["任务一内容", "任务二内容", "任务三内容"]。`;
 
     const reply = await callTacticalAPI([
       { role: 'system', content: cfg.systemPrompt || `你是 ${aiName}` },
       { role: 'user', content: prompt }
     ]);
-
+    
     const arrMatch = reply.match(/\[[\s\S]*\]/);
     if (arrMatch) {
       const taskStrings = JSON.parse(arrMatch[0]);
