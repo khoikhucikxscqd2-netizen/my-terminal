@@ -107,7 +107,6 @@ function renderCapsuleList() {
   });
 }
 
-// 🌟 核心升级：打开阅读界面（如果尚未生成“重逢新回信”，则在拆封瞬间调用 API 生成第三封信）
 async function openCapsuleReader(cap) {
   const listView = document.getElementById('capsule-list-view');
   const readerView = document.getElementById('capsule-reader-view');
@@ -126,7 +125,6 @@ async function openCapsuleReader(cap) {
   
   const createdDate = new Date(cap.createdAt).toLocaleDateString('zh-CN');
 
-  // 拼接前两封（当年的来回信）
   let baseHtml = '';
   if (cap.userLetter) {
     baseHtml += `
@@ -151,7 +149,6 @@ async function openCapsuleReader(cap) {
     </div>
   `;
 
-  // 如果已经有“重逢新回信”了，直接全部渲染出来，不再重复调 API
   if (cap.futureReplyLetter) {
     const openedDate = cap.openedAt ? new Date(cap.openedAt).toLocaleDateString('zh-CN') : '今日';
     baseHtml += `
@@ -169,7 +166,6 @@ async function openCapsuleReader(cap) {
     return;
   }
 
-  // 如果是第一次拆封，先渲染前两封，并在最底下放一个“正在阅读并写新回信”的动态区域
   const loadingBlockId = 'future-reply-loading-' + Date.now();
   contentBox.innerHTML = baseHtml + `
     <div class="letter-divider"><span>⏳ 时光重逢</span></div>
@@ -183,7 +179,6 @@ async function openCapsuleReader(cap) {
   `;
   contentBox.scrollTop = contentBox.scrollHeight;
 
-  // 标记状态为已拆封
   const list = getCapsules();
   const idx = list.findIndex(c => c.id === cap.id);
   if (idx !== -1) {
@@ -198,30 +193,17 @@ async function openCapsuleReader(cap) {
     return;
   }
 
- const { diffDays, guide } = getTimeSpanRule(cap.createdAt, Date.now());
+  const { diffDays, guide } = getTimeSpanRule(cap.createdAt, Date.now());
 
- // 精准计算封存与拆封之间实际间隔了多少天
-  const diffDays = Math.max(1, Math.round((Date.now() - cap.createdAt) / (1000 * 60 * 60 * 24)));
-  let timeSpanGuide = '';
-  if (diffDays <= 3) {
-    timeSpanGuide = `（重要时间提醒：距离写信只过去了短短 ${diffDays} 天，就在这几天内！绝对不要用“去年”、“当年”、“好久以前”这种跨年词汇，要以“前几天/昨天刚留下的信，今天终于解锁了”的自然口吻来写。）`;
-  } else if (diffDays < 30) {
-    timeSpanGuide = `（重要时间提醒：距离写信过去了 ${diffDays} 天，大约几周前。请用“前阵子”、“几周前”来指代写信的时间，不要说“去年”或“当年”。）`;
-  } else if (diffDays < 365) {
-    timeSpanGuide = `（重要时间提醒：距离写信过去了 ${diffDays} 天，几个月前。请用“几个月前”来指代写信的时间。）`;
-  } else {
-    timeSpanGuide = `（重要时间提醒：距离写信已经过去了整整 ${diffDays} 天，超过一年了！可以感慨时光飞逝，用“去年”或“当年”来回忆。）`;
-  }
-
-  // 请求 AI 站在“现在”的视角，读完过去的信后写第三封信
   const prompt = `[系统时空信箱拆封事件]
-今天是 ${new Date().toLocaleDateString('zh-CN')}。在 ${createdDate}（距今整整 ${diffDays} 天前）封存的时空胶囊《${cap.title}》到期拆封了！
-${timeSpanGuide}
+今天是 ${new Date().toLocaleDateString('zh-CN')}。在 ${createdDate}（距今 ${diffDays} 天前）封存的时空胶囊《${cap.title}》到期拆封了！
+${guide}
 以下是当时封存的信件内容：
 ${cap.userLetter ? `【${createdDate} ${userName} 写下的信】：\n${cap.userLetter}\n\n` : ''}【${createdDate} ${aiName} 当时写下的信】：\n${cap.aiLetter}
 
 现在，你（${aiName}）和 ${userName} 一起站在“今天”的时间点，重新读完了这些字句。
-请完全贴合你的人设，结合你们现在的近况与情感，以第一人称给 ${userName} 写一封“拆封后的新回信”。严格遵守上面的时间跨度提醒，自然回应信里提到的事情或心愿。直接输出信件正文，不要加多余解释。`;
+请完全贴合你的人设，结合你们现在的近况与情感，以第一人称给 ${userName} 写一封“拆封后的新回信”。严格遵守上面的时间约束，自然回应信里提到的事情或心愿。直接输出信件正文，不要加多余解释。`;
+
   try {
     const { messages } = buildContextPayload(prompt);
     const futureReply = await callTacticalStreamAPI(messages, (partial) => {
@@ -239,7 +221,6 @@ ${cap.userLetter ? `【${createdDate} ${userName} 写下的信】：\n${cap.user
       box.textContent = futureReply;
     }
 
-    // 永久保存这第三封信到本地与云端
     const latestList = getCapsules();
     const latestIdx = latestList.findIndex(c => c.id === cap.id);
     if (latestIdx !== -1) {
@@ -252,7 +233,6 @@ ${cap.userLetter ? `【${createdDate} ${userName} 写下的信】：\n${cap.user
   }
 }
 
-// 寄信核心逻辑（发往 API 索要当下回信，并一并封存）
 async function sendTimeCapsule() {
   const title = document.getElementById('cap-write-title').value.trim();
   const dateStr = document.getElementById('cap-write-date').value;
@@ -266,7 +246,6 @@ async function sendTimeCapsule() {
   const todayZero = new Date(`${bj.fullDateStr}T00:00:00`).getTime();
   const unlockZero = new Date(`${dateStr}T00:00:00`).getTime();
 
-  // 测试提示：如果想立刻测试拆封效果，可以把下面这行 if 暂时注释掉，就能选今天了
   if (unlockZero <= todayZero) return alert('解锁日期必须是明天或更远的未来！');
 
   const cfg = typeof getConfig === 'function' ? getConfig() : {};
@@ -304,7 +283,7 @@ ${guide}
       status: 'locked',
       userLetter: content,
       aiLetter: reply,
-      futureReplyLetter: '' // 预留给解锁日拆封时的第三封新回信
+      futureReplyLetter: ''
     });
 
     saveCapsules(list);
@@ -324,7 +303,6 @@ ${guide}
   }
 }
 
-// 导出所有已拆封信件（包含三封完整来回信）
 function exportAllCapsules() {
   const list = getCapsules();
   const openedList = list.filter(c => c.status === 'opened');
@@ -365,27 +343,27 @@ function exportAllCapsules() {
   a.download = `TimeCapsule_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.txt`;
   a.click();
 }
-// 🌟 新增：AI 静默埋盲盒机制
+
+// 🌟 AI 静默埋盲盒机制
 async function rollForSecretCapsule(triggerMood) {
   const cfg = typeof getConfig === 'function' ? getConfig() : {};
   if (!cfg.apiKey) return;
 
   const list = getCapsules();
-  // 1. 冷却与防泛滥检查：如果信箱里已经有一个未拆封的“惊喜盲盒”，就不再送了
   const existingSurprise = list.find(c => c.isSecretSurprise && c.status === 'locked');
   if (existingSurprise) return; 
 
   const lastSurpriseTime = localStorage.getItem('ezekiel_last_surprise_time') || 0;
-  // 冷却期：3天 (测试时可以把这里注释掉)
   if (Date.now() - lastSurpriseTime < 3 * 24 * 60 * 60 * 1000) return; 
 
-  // 2. 抛骰子：25% 概率命中（如果你想马上测试看效果，把 0.25 改成 1.0）
   if (Math.random() > 0.25) return;
 
-  // 3. 命中！开始静默生成
   const aiName = cfg.aiName || 'AI';
   const userName = cfg.userName || 'USER';
-  const tmr = new Date(Date.now() + 86400000); // 默认锁1天，明天看
+  
+  const bj = typeof getBeijingTimeInfo === 'function' ? getBeijingTimeInfo() : null;
+  const baseMs = bj ? new Date(`${bj.fullDateStr}T00:00:00`).getTime() : Date.now();
+  const tmr = new Date(baseMs + 86400000);
   const unlockDateStr = `${tmr.getFullYear()}-${String(tmr.getMonth()+1).padStart(2,'0')}-${String(tmr.getDate()).padStart(2,'0')}`;
 
   const prompt = `[系统最高权限隐秘事件]
@@ -395,13 +373,11 @@ ${userName} 刚才在终端把自己的心情更新为了【${triggerMood}】。
 直接输出信件正文，不要有任何多余的解释。`;
 
   try {
-    // 静默调用，绝不打扰前台聊天
     const reply = await callTacticalAPI([
       { role: 'system', content: cfg.systemPrompt || `你是 ${aiName}` },
       { role: 'user', content: prompt }
     ]);
 
-    // 悄悄塞入信箱
     list.push({
       id: Date.now().toString(),
       title: `来自 ${aiName} 的加密留言`,
@@ -420,9 +396,7 @@ ${userName} 刚才在终端把自己的心情更新为了【${triggerMood}】。
     console.warn('// 盲盒投放失败', err);
   }
 }
-// ==========================================
-// 初始化与界面切换绑定
-// ==========================================
+
 document.addEventListener('DOMContentLoaded', () => {
   const hubModal = document.getElementById('extension-hub-modal');
   const capsuleModal = document.getElementById('timecapsule-modal');

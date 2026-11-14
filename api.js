@@ -169,11 +169,16 @@ function buildContextPayload(newUserText = '', imageBase64 = null) {
   const maxLimit = Number(cfg.maxTokens) || 100000;
   const memoryPool = JSON.parse(localStorage.getItem(STORAGE_KEYS.MEMORY_POOL) || '{"diaries":[],"readingNotes":[],"mood":""}');
   
+  // 🌟 新增：获取当前的精准时间（包含星期几）
+  const now = new Date();
+  const timeStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} (星期${'日一二三四五六'[now.getDay()]})`;
+
   let coreSystemContent = `[核心人设指令]\n${cfg.systemPrompt || '未设置人设'}\n`;
+  coreSystemContent += `\n[当前现实时间]\n${timeStr}\n`; // 强制把时间刻进模型的潜意识
   if (memoryPool.mood) coreSystemContent += `\n[当前双方情绪板]\n${memoryPool.mood}\n`;
   if (memoryPool.diaries.length > 0) coreSystemContent += `\n[近期日记档案摘要]\n${memoryPool.diaries.slice(-15).join('\n')}\n`;
   if (memoryPool.readingNotes.length > 0) coreSystemContent += `\n[共同阅读书摘体会]\n${memoryPool.readingNotes.slice(-10).join('\n')}\n`;
-
+  
   let usedTokens = estimateTokens(coreSystemContent) + estimateTokens(newUserText);
   const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
   const selectedHistory = [];
