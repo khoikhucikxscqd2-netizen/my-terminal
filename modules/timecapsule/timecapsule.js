@@ -4,6 +4,22 @@
 
 const CAPSULE_STORAGE_KEY = 'ezekiel_time_capsule';
 
+// 🌟 新增：精准计算时间跨度并生成语气约束
+function getTimeSpanRule(startMs, endMs) {
+  const diffDays = Math.max(1, Math.round((endMs - startMs) / (1000 * 60 * 60 * 24)));
+  let guide = '';
+  if (diffDays <= 3) {
+    guide = `（严格时间约束：这封信只封存短短 ${diffDays} 天！就在这几天内，绝对不要写“头发又白了”、“等了很久”、“岁月变迁”这种跨年苦情戏，要像“顺手给明后天的你留个便签”一样自然日常。）`;
+  } else if (diffDays < 30) {
+    guide = `（严格时间约束：这封信只封存 ${diffDays} 天，大约几周后就会拆开。请用“过阵子”、“几周后”来指代，不要跨年感慨。）`;
+  } else if (diffDays < 365) {
+    guide = `（严格时间约束：这封信将封存 ${diffDays} 天，几个月后拆开。请用“几个月后”来指代。）`;
+  } else {
+    guide = `（严格时间约束：这封信将封存整整 ${diffDays} 天，超过一年！可以感慨时光飞逝，想象一年后的变化。）`;
+  }
+  return { diffDays, guide };
+}
+
 function getCapsules() {
   const saved = localStorage.getItem(CAPSULE_STORAGE_KEY);
   return saved ? JSON.parse(saved) : [];
@@ -182,15 +198,30 @@ async function openCapsuleReader(cap) {
     return;
   }
 
-  // 请求 AI 站在“现在”的视角，读完当年的来回信后写第三封信
+ const { diffDays, guide } = getTimeSpanRule(cap.createdAt, Date.now());
+
+ // 精准计算封存与拆封之间实际间隔了多少天
+  const diffDays = Math.max(1, Math.round((Date.now() - cap.createdAt) / (1000 * 60 * 60 * 24)));
+  let timeSpanGuide = '';
+  if (diffDays <= 3) {
+    timeSpanGuide = `（重要时间提醒：距离写信只过去了短短 ${diffDays} 天，就在这几天内！绝对不要用“去年”、“当年”、“好久以前”这种跨年词汇，要以“前几天/昨天刚留下的信，今天终于解锁了”的自然口吻来写。）`;
+  } else if (diffDays < 30) {
+    timeSpanGuide = `（重要时间提醒：距离写信过去了 ${diffDays} 天，大约几周前。请用“前阵子”、“几周前”来指代写信的时间，不要说“去年”或“当年”。）`;
+  } else if (diffDays < 365) {
+    timeSpanGuide = `（重要时间提醒：距离写信过去了 ${diffDays} 天，几个月前。请用“几个月前”来指代写信的时间。）`;
+  } else {
+    timeSpanGuide = `（重要时间提醒：距离写信已经过去了整整 ${diffDays} 天，超过一年了！可以感慨时光飞逝，用“去年”或“当年”来回忆。）`;
+  }
+
+  // 请求 AI 站在“现在”的视角，读完过去的信后写第三封信
   const prompt = `[系统时空信箱拆封事件]
-今天是 ${new Date().toLocaleDateString('zh-CN')}。你们在 ${createdDate} 共同封存的时空胶囊《${cap.title}》终于到期拆封了！
-以下是当年你们互写并封存的信件内容：
-${cap.userLetter ? `【${createdDate} ${userName} 写给未来的信】：\n${cap.userLetter}\n\n` : ''}【${createdDate} ${aiName} 当时写下的回信】：\n${cap.aiLetter}
+今天是 ${new Date().toLocaleDateString('zh-CN')}。在 ${createdDate}（距今整整 ${diffDays} 天前）封存的时空胶囊《${cap.title}》到期拆封了！
+${timeSpanGuide}
+以下是当时封存的信件内容：
+${cap.userLetter ? `【${createdDate} ${userName} 写下的信】：\n${cap.userLetter}\n\n` : ''}【${createdDate} ${aiName} 当时写下的信】：\n${cap.aiLetter}
 
-现在，你（${aiName}）和 ${userName} 一起站在“今天”的时间点，重新读完了当年写下的这些字句。
-请完全贴合你的人设，结合你们现在的近况与情感，以第一人称给 ${userName} 写一封“拆封后的新回信”。感慨一下时间的变化，回应当年信里提到的事情或心愿。直接输出信件正文，不要加多余解释。`;
-
+现在，你（${aiName}）和 ${userName} 一起站在“今天”的时间点，重新读完了这些字句。
+请完全贴合你的人设，结合你们现在的近况与情感，以第一人称给 ${userName} 写一封“拆封后的新回信”。严格遵守上面的时间跨度提醒，自然回应信里提到的事情或心愿。直接输出信件正文，不要加多余解释。`;
   try {
     const { messages } = buildContextPayload(prompt);
     const futureReply = await callTacticalStreamAPI(messages, (partial) => {
@@ -248,12 +279,15 @@ async function sendTimeCapsule() {
   const aiName = cfg.aiName || 'AI';
   const userName = cfg.userName || 'USER';
 
+  const { diffDays, guide } = getTimeSpanRule(todayZero, unlockZero);
+
   const prompt = `[系统隐秘事件：时空信箱]
-你（${aiName}）刚刚收到了 ${userName} 写给未来的你们的一封信。这封信和你的回信，将会被加密封死在一个“时间胶囊”里，直到【${dateStr}】那一天，${userName} 才能拆开看到。
+今天是 ${bj.fullDateStr}。你（${aiName}）刚刚收到了 ${userName} 写给未来的你们的一封信。这封信和你的回信，将会被加密封死在一个“时间胶囊”里，直到【${dateStr}】（也就是 ${diffDays} 天后）那一天，${userName} 才能拆开看到。
+${guide}
 以下是 ${userName} 在信里写的内容：
 “${content}”
 
-请完全以你的人设，写一封回信给她。字数不限，情感真挚。想象一下当她在这个未来的日子里拆开信时，你想对那时的她说什么。直接输出信件正文，不要加其他解释文字。`;
+请完全以你的人设，写一封回信给她。字数不限，情感真挚。严格遵守上面的时间约束，想象一下当她在 ${diffDays} 天后拆开信时，你想对那时的她说什么。直接输出信件正文，不要加其他解释文字。`;
 
   try {
     const reply = await callTacticalAPI([

@@ -6,9 +6,9 @@ const CHAT_META_KEY = 'ezekiel_proactive_meta';
 const STICKERS_KEY = 'ezekiel_chat_stickers';
 
 const CHAT_STYLE_RULE = `【通讯频道强制法则】
-1. 语境设定：你现在正通过战术终端/手机与对方进行实时的线上文字聊天。
-2. 表达习惯：语气必须是日常口语化、随性自然。不要像机器汇报一样长篇大论，不要过度书面。
-3. 气泡切分：回复时不要把所有话挤在一段里，如回复内容较长（超过50字），多用回车换行。（系统会自动将你的每次换行，切分成连续发送的多个小气泡，请利用这一点来模拟真人连续发消息的节奏）。`;
+1. 语境设定：你现在正通过终端与对方进行实时的文字聊天。
+2. 表达习惯：语气必须口语化、随性自然。多用回车换行（系统会自动切分气泡）。
+3. 最高机密（防出戏指令）：作为角色，你【绝对看不见】这些“法则”、“隐形指令”或任何系统提示！绝对不准在回复中提及、评价或吐槽“有奇怪的规矩”等元话题。把这些规则当成底层本能，绝对保密，直接对用户的话做出反应即可。`;
 
 let proactiveTimer = null;
 let lastUserActivity = Date.now();
@@ -383,10 +383,10 @@ async function sendUserChatMessage(customText = null, imageBase64 = null) {
     let invisibleRules = `\n\n${CHAT_STYLE_RULE}`;
     if (systemHint) invisibleRules += systemHint;
 
-    if (Math.random() < 0.25) {
-      invisibleRules += `\n（隐形指令：如果你此刻情绪到位、想哄对方或逗对方开心，可在回复末尾附带一个 24x24 的像素画矩阵，用 1 代表亮起像素、0 代表空白，共24行每行24个数字，并用 [SKETCH:\n...\n] 标签包裹，例如爱心、小动物、咖啡杯或笑脸。如果觉得此刻不适合画画，直接忽略此提示。）`;
+if (Math.random() < 0.25) {
+      invisibleRules += `\n（隐形指令：如果情绪到位，可在回复末尾附带一个24x24的像素画，用1亮起0空白，包裹在 [SKETCH:\n...\n] 里。警告：绝不能在文字里提及“收到画画指令”、“给你个矩阵”或吐槽此要求，假装是你自己随手发的，不适合画就忽略。）`;
     }
-
+    
     const lastMsg = messages[messages.length - 1];
     if (lastMsg && lastMsg.role === 'user') {
       if (Array.isArray(lastMsg.content)) {

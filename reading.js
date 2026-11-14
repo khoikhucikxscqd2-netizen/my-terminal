@@ -2,8 +2,8 @@
 // 升级版阶段五：持久化伴读批注 & 自定义页码范围书摘引擎 (reading.js - 个性化版)
 // ==========================================
 
-const LIBRARY_KEY = 'ezekiel_library';
-const EXTRACTS_KEY = 'ezekiel_extracts';
+const LIBRARY_KEY = 'Terminal_library';
+const EXTRACTS_KEY = 'Terminal_extracts';
 
 let currentBook = null;
 let currentChunkIndex = 0;
@@ -237,7 +237,7 @@ function openDiscussionPanel(sentenceId) {
   panel.dataset.currentId = id;
 
   document.getElementById('discuss-original-text').textContent = sentence.text;
-  document.getElementById('discuss-ezekiel-comment').textContent = `${aiName}: ${annotation.comment}`;
+  document.getElementById('discuss-Terminal-comment').textContent = `${aiName}: ${annotation.comment}`;
   
   const historyBox = document.getElementById('discuss-history');
   historyBox.innerHTML = annotation.replies.map(r => `
@@ -470,7 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `Ezekiel_Extracts_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.txt`;
+      a.download = `Terminal_Extracts_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.txt`;
       a.click();
     });
   }
