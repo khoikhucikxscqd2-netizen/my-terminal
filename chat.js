@@ -417,6 +417,15 @@ if (Math.random() < 0.25) {
     localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(updatedHistory));
     updateTopBarMetrics();
     
+    // 🌟 新增：每次 AI 回复完，刷新游标进度，如果满 5w 就后台偷偷归档
+    if (typeof checkMemoryWatermark === 'function') {
+       const { tokenCount } = checkMemoryWatermark();
+       if (tokenCount >= 50000 && typeof triggerMemorySummary === 'function') {
+           triggerMemorySummary(); 
+       }
+    }
+  
+
     // 硬刷新一下，防止 DOM 错乱
     renderAllChatHistory();
 

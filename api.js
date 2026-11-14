@@ -164,7 +164,7 @@ function estimateTokens(text) {
   return Math.ceil(cnChars * 1.6 + otherChars * 0.4);
 }
 
-function buildContextPayload(newUserText = '', imageBase64 = null) {
+function buildContextPayload(newUserText = '', imageBase64 = null, audioPayload = null) {  
   const cfg = getConfig();
   const maxLimit = Number(cfg.maxTokens) || 100000;
   const memoryPool = JSON.parse(localStorage.getItem(STORAGE_KEYS.MEMORY_POOL) || '{"diaries":[],"readingNotes":[],"mood":""}');
@@ -178,6 +178,10 @@ function buildContextPayload(newUserText = '', imageBase64 = null) {
   if (memoryPool.mood) coreSystemContent += `\n[当前双方情绪板]\n${memoryPool.mood}\n`;
   if (memoryPool.diaries.length > 0) coreSystemContent += `\n[近期日记档案摘要]\n${memoryPool.diaries.slice(-15).join('\n')}\n`;
   if (memoryPool.readingNotes.length > 0) coreSystemContent += `\n[共同阅读书摘体会]\n${memoryPool.readingNotes.slice(-10).join('\n')}\n`;
+  if (typeof getInjectableMemories === 'function') {
+    const longTermMems = getInjectableMemories();
+    if (longTermMems) coreSystemContent += `\n${longTermMems}\n`;
+  }
   
   let usedTokens = estimateTokens(coreSystemContent) + estimateTokens(newUserText);
   const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
@@ -199,7 +203,22 @@ for (let i = history.length - 1; i >= 0; i--) {
 
   const messages = [{ role: 'system', content: coreSystemContent }, ...selectedHistory];
   
-  if (imageBase64) {
+if (audioPayload && audioPayload.base64) {
+    // 🎵 一次性音频透传（兼容 OpenAI / Gemini 反代标准 input_audio 格式）
+    messages.push({
+      role: 'user',
+      content: [
+        { type: 'text', text: newUserText },
+        {
+          type: 'input_audio',
+          input_audio: {
+            data: audioPayload.base64,
+            format: audioPayload.format || 'mp3'
+          }
+        }
+      ]
+    });
+  } else if (imageBase64) {
     if (messages.length > 1 && messages[messages.length - 1].role === 'user') {
       const lastText = messages[messages.length - 1].content;
       messages[messages.length - 1].content = [
@@ -542,4 +561,230 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelector('.sub-grid')?.classList.remove('mobile-active-combo');
     }
   });
+});
+// ==========================================
+// 新增：记忆库二层界面平滑切换逻辑
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+  const memBtn = document.getElementById('open-memory-db-btn');
+  const tabs = document.querySelector('#settings-modal .modal-tabs');
+  const tabContents = document.querySelectorAll('#settings-modal .tab-content');
+  const testResult = document.getElementById('api-test-result');
+  const modalFooter = document.getElementById('settings-modal-footer');
+  const memView = document.getElementById('memory-db-view');
+  
+  const modalHeaderTitle = document.querySelector('#settings-modal .modal-header h2');
+  const panelTag = document.querySelector('#settings-modal .modal-header .panel-tag');
+  
+  // 暂存原本的标题，方便切回来时恢复
+  const originalTitle = modalHeaderTitle ? modalHeaderTitle.innerHTML : '终端核心配置 // SYSTEM OVERRIDE';
+  const originalTag = panelTag ? panelTag.innerHTML : '[SYS-CFG]';
+
+  if (memBtn) {
+    memBtn.addEventListener('click', () => {
+      // 1. 隐藏第一层的所有内容
+      if (tabs) tabs.style.display = 'none';
+      tabContents.forEach(c => c.style.display = 'none');
+      if (testResult) testResult.style.display = 'none';
+      if (modalFooter) modalFooter.style.display = 'none';
+      
+      // 2. 显示第二层的记忆库视图
+      if (memView) memView.classList.remove('hidden');
+      
+      // 3. 修改顶栏标题，装上返回按钮
+      if (panelTag) panelTag.innerHTML = '[MEM-DB]';
+      if (modalHeaderTitle) {
+        modalHeaderTitle.innerHTML = `<button class="back-to-cfg-btn" id="mem-back-btn">◀ 返回配置</button> <span style="margin-left: 10px;">核心记忆库 // ARCHIVES</span>`;
+        
+        // 给这个新长出来的返回按钮绑定点击事件
+        document.getElementById('mem-back-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          // 清除行内隐藏样式，让第一层根据 CSS 自动恢复原样
+          if (tabs) tabs.style.display = '';
+          tabContents.forEach(c => c.style.display = '');
+          if (testResult) testResult.style.display = '';
+          if (modalFooter) modalFooter.style.display = '';
+          
+          // 重新隐藏第二层
+          if (memView) memView.classList.add('hidden');
+          
+          // 恢复原本的标题栏
+          if (panelTag) panelTag.innerHTML = originalTag;
+          modalHeaderTitle.innerHTML = originalTitle;
+        });
+      }
+    });
+  }
+  
+  // 兜底机制：每次点击右上角 X 关闭整个配置面板时，顺便重置回第一层，防止下次打开错乱
+  document.getElementById('close-settings-btn')?.addEventListener('click', () => {
+    const backBtn = document.getElementById('mem-back-btn');
+    if (backBtn) backBtn.click();
+  });
+});
+// ==========================================
+// 阶段九核心：长线记忆库 (5w Token 游标与 15+5 抽卡注入)
+// ==========================================
+
+// 1. 获取 15(近期) + 5(随机早期) 的混合记忆用于组装 Prompt
+function getInjectableMemories() {
+  const mems = JSON.parse(localStorage.getItem('ezekiel_long_term_memories') || '[]');
+  if (mems.length === 0) return '';
+  
+  const recent = mems.slice(0, 15);
+  let randomOld = [];
+  if (mems.length > 15) {
+    const older = mems.slice(15);
+    // Fisher-Yates 洗牌算法随机抽 5 个
+    for (let i = older.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [older[i], older[j]] = [older[j], older[i]];
+    }
+    randomOld = older.slice(0, 5);
+  }
+  
+  let res = `[长期记忆档案 // 自动召回]\n以下是你过往留存的记忆片段，请自然融入你的认知背景中，不要生硬背诵：\n【近期记忆（按时间倒序）】\n`;
+  recent.forEach(m => res += `- [${m.date}] ${m.content}\n`);
+  if (randomOld.length > 0) {
+    res += `【往昔闪回（随机唤起的早期记忆）】\n`;
+    randomOld.forEach(m => res += `- [${m.date}] ${m.content}\n`);
+  }
+  return res;
+}
+
+// 2. 检查 50,000 Token 水位线并更新进度条
+function checkMemoryWatermark() {
+  const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
+  const lastTime = Number(localStorage.getItem('ezekiel_memory_cursor') || 0);
+  const unarchived = history.filter(m => m.time > lastTime);
+  
+  let tokenCount = 0;
+  unarchived.forEach(m => tokenCount += estimateTokens(m.content));
+
+  const progressEl = document.getElementById('memory-progress-bar');
+  const textEl = document.getElementById('memory-progress-text');
+  const btnEl = document.getElementById('force-summary-btn');
+
+  if (progressEl && textEl) {
+    let percent = Math.min(100, (tokenCount / 50000) * 100);
+    progressEl.style.width = percent + '%';
+    textEl.textContent = `距离下次归档：${tokenCount.toLocaleString()} / 50,000 TKN`;
+    if (percent >= 100) {
+      progressEl.style.background = 'var(--accent-red)';
+    } else {
+      progressEl.style.background = 'var(--accent-amber)';
+    }
+  }
+  
+  const hintEl = document.getElementById('memory-db-count-hint');
+  if (hintEl) {
+    const totalMems = JSON.parse(localStorage.getItem('ezekiel_long_term_memories') || '[]').length;
+    hintEl.textContent = `已存 ${totalMems} 条 >`;
+  }
+  return { tokenCount, unarchived };
+}
+
+// 3. 触发归档生成
+let isSummarizing = false;
+async function triggerMemorySummary() {
+  if (isSummarizing) return;
+  const { unarchived } = checkMemoryWatermark();
+  if (unarchived.length === 0) return alert('当前没有需要归档的新对话记录。');
+  isSummarizing = true;
+
+  const btnEl = document.getElementById('force-summary-btn');
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '⏳ 记忆压缩中...'; }
+
+  const cfg = getConfig();
+  const aiName = cfg.aiName || 'AI';
+  const userName = cfg.userName || 'USER';
+
+  let chatText = unarchived.map(m => {
+    const speaker = m.role === 'user' ? userName : aiName;
+    return `${speaker}: ${m.content.replace(/\[.*?\]/g, '')}`;
+  }).join('\n');
+  if (chatText.length > 25000) chatText = chatText.slice(-25000); // 防爆破限流
+
+  const prompt = `[系统记忆归档指令]
+请完全代入你（${aiName}）的视角与核心人设，回顾以上对话记录，为自己留存一份精炼的阶段性记忆档案（严格控制在 150 字以内）。
+记录需客观提炼以下三个维度的核心信息：
+1. 关系与事件进展：这段时间内双方共同经历的关键事件，或彼此关系状态的实质推进；
+2. 互动与深层触动：交流中具有意义的共识、情绪波动或值得留存的对话瞬间；
+3. 对 ${userName} 的当前印象：对方在这段时期展现出的状态、习惯或给你的直观感受。
+要求：摒弃空泛套话与系统腔，保留具体事实、时间节点与双方约定，以你习惯的私人记录口吻直接输出正文，不要加任何标题或解释。
+
+【待归档对话片段】
+${chatText}`;
+
+  try {
+    const reply = await callTacticalAPI([
+      { role: 'system', content: cfg.systemPrompt || `你是 ${aiName}` },
+      { role: 'user', content: prompt }
+    ]);
+
+    const mems = JSON.parse(localStorage.getItem('ezekiel_long_term_memories') || '[]');
+    const now = new Date();
+    mems.unshift({
+      id: Date.now().toString(),
+      date: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,
+      content: reply.trim()
+    });
+    localStorage.setItem('ezekiel_long_term_memories', JSON.stringify(mems));
+    
+    // 更新游标为最后一条已归档消息的时间戳
+    localStorage.setItem('ezekiel_memory_cursor', unarchived[unarchived.length - 1].time.toString());
+    
+    renderMemoryList();
+    checkMemoryWatermark();
+  } catch (err) {
+    alert('归档失败: ' + err.message);
+  } finally {
+    isSummarizing = false;
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = '⚡ 立即总结'; }
+  }
+}
+
+// 4. 渲染界面与修改删除
+function renderMemoryList() {
+  const container = document.getElementById('memory-list-container');
+  if (!container) return;
+  const mems = JSON.parse(localStorage.getItem('ezekiel_long_term_memories') || '[]');
+  if (mems.length === 0) {
+    container.innerHTML = '<p class="slot-hint" style="margin-top: 20px;">记忆库空空如也，积累足够的对话后，系统会自动或可手动生成记忆档案。</p>';
+    return;
+  }
+  container.innerHTML = mems.map((m, idx) => `
+    <div class="memory-card">
+      <div class="memory-header">
+        <span class="memory-time">${m.date} ${idx < 15 ? '<span style="color:var(--accent-green);font-size:10px;">[近期固定池]</span>' : '<span style="color:var(--text-muted);font-size:10px;">[早期随机池]</span>'}</span>
+        <button class="mini-btn" style="border-color:var(--accent-red); color:var(--accent-red);" onclick="deleteMemory('${m.id}')">删除</button>
+      </div>
+      <!-- 直接点击文本就可以原地修改错别字 -->
+      <div class="memory-content" contenteditable="true" onblur="updateMemoryContent('${m.id}', this.innerText)">${m.content}</div>
+    </div>
+  `).join('');
+}
+
+window.deleteMemory = function(id) {
+  if (!confirm('确认删除这条核心记忆？')) return;
+  let mems = JSON.parse(localStorage.getItem('ezekiel_long_term_memories') || '[]');
+  mems = mems.filter(m => m.id !== id);
+  localStorage.setItem('ezekiel_long_term_memories', JSON.stringify(mems));
+  renderMemoryList();
+  checkMemoryWatermark();
+};
+
+window.updateMemoryContent = function(id, newText) {
+  let mems = JSON.parse(localStorage.getItem('ezekiel_long_term_memories') || '[]');
+  const target = mems.find(m => m.id === id);
+  if (target) {
+    target.content = newText.trim();
+    localStorage.setItem('ezekiel_long_term_memories', JSON.stringify(mems));
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderMemoryList();
+  checkMemoryWatermark();
+  document.getElementById('force-summary-btn')?.addEventListener('click', triggerMemorySummary);
 });

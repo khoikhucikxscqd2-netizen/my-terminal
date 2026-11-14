@@ -354,9 +354,17 @@
             </div>
           </div>
 
-          <div class="form-group">
+<div class="form-group">
             <label>独立必读人设 (System Prompt // 永不裁剪)</label>
             <textarea id="cfg-system-prompt" rows="7" placeholder="在此输入char的核心人设、背景、说话风格与对你的称呼..."></textarea>
+          </div>
+          
+          <!-- 新增：记忆库入口按钮 -->
+          <div class="goals-bar" style="margin-top: 12px; cursor: pointer; border-color: var(--accent-amber);" id="open-memory-db-btn">
+            <span class="goals-label" style="color: var(--accent-amber); font-weight: bold;">
+              [MEM-DB] 核心记忆库与自动归档
+            </span>
+            <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);" id="memory-db-count-hint">已存 0 条 ></span>
           </div>
         </div>
 
@@ -458,7 +466,25 @@
         <div class="test-status-bar" id="api-test-result">等待配置校验...</div>
       </div>
 
-      <div class="modal-footer">
+      <!-- 新增：二层记忆管理视图（默认隐藏） -->
+      <div class="modal-body hidden" id="memory-db-view" style="padding-top: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 8px; border: 1px solid var(--border-dim);">
+          <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+            <span style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-amber);">// 自动总结游标</span>
+            <div style="width: 100%; height: 4px; background: var(--bg-base); border-radius: 2px; overflow: hidden; border: 1px solid var(--border-dim);">
+              <div id="memory-progress-bar" style="width: 0%; height: 100%; background: var(--accent-amber); transition: width 0.3s;"></div>
+            </div>
+            <span style="font-size: 10px; color: var(--text-muted);" id="memory-progress-text">距离下次归档：0 / 50,000 TKN</span>
+          </div>
+          <button class="mini-btn" id="force-summary-btn" style="margin-left: 12px; height: fit-content; border-color: var(--accent-amber); color: var(--accent-amber);">⚡ 立即总结</button>
+        </div>
+
+        <div id="memory-list-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 50vh; overflow-y: auto; padding-right: 4px;">
+          <!-- 记忆卡片渲染区 -->
+        </div>
+      </div>
+
+      <div class="modal-footer" id="settings-modal-footer">
         <button class="tac-btn" id="test-api-btn">⚡ 测试链路连通性</button>
         <button class="tac-btn primary" id="save-settings-btn">💾 保存并写入终端</button>
       </div>
