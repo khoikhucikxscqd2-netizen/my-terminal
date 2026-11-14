@@ -183,13 +183,19 @@ function buildContextPayload(newUserText = '', imageBase64 = null) {
   const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
   const selectedHistory = [];
 
-  for (let i = history.length - 1; i >= 0; i--) {
+for (let i = history.length - 1; i >= 0; i--) {
     const msg = history[i];
-    const msgTokens = estimateTokens(msg.content) + 6;
+    // 🌟 新增：把每条历史消息的发送时间拼在前面
+    const d = new Date(msg.time || Date.now());
+    const tTag = `[${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}] `;
+    const contentWithTime = tTag + msg.content;
+
+    const msgTokens = estimateTokens(contentWithTime) + 6;
     if (usedTokens + msgTokens > maxLimit - 2000) break;
-    selectedHistory.unshift({ role: msg.role, content: msg.content });
+    selectedHistory.unshift({ role: msg.role, content: contentWithTime });
     usedTokens += msgTokens;
   }
+
 
   const messages = [{ role: 'system', content: coreSystemContent }, ...selectedHistory];
   
