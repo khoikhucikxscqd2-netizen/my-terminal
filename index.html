@@ -460,6 +460,15 @@
               <input type="file" id="import-data-input" accept=".json" style="display: none;">
               <button class="tac-btn" id="import-data-btn">📥 导入本地文件</button>
             </div>
+
+            <!-- 新增：一键重置危险区 -->
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--accent-red); display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="color: var(--accent-red); font-size: 12px; font-weight: bold;">⚠️ 格式化当前存档</span>
+                <small style="display: block; color: var(--text-muted); font-size: 10px;">清空所有本地聊天、日记、记忆与设定（不可逆）</small>
+              </div>
+              <button class="tac-btn" id="open-reset-modal-btn" style="border-color: var(--accent-red); color: var(--accent-red);">🗑️ 一键重置</button>
+            </div>
           </div>
         </div>
 
@@ -467,7 +476,7 @@
       </div>
 
       <!-- 新增：二层记忆管理视图（默认隐藏） -->
-      <div class="modal-body hidden" id="memory-db-view" style="padding-top: 0;">
+      <div class="modal-body" id="memory-db-view" style="display: none; padding-top: 0;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 8px; border: 1px solid var(--border-dim);">
           <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
             <span style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-amber);">// 自动总结游标</span>
@@ -616,6 +625,29 @@
         <div class="music-playlist" id="music-playlist-container">
           <p class="slot-hint" style="margin-top: 20px;">列表为空，点击上方导入手机/电脑里的音频文件。</p>
         </div>
+      </div>
+    </div>
+  </div>
+<!-- 6. 一键重置二次手打确认弹窗 -->
+  <div class="modal-backdrop hidden" id="reset-confirm-modal" style="z-index: 250;">
+    <div class="tac-modal" style="max-width: 380px; border-color: var(--accent-red);">
+      <div class="panel-header modal-header">
+        <span class="panel-tag" style="color: var(--accent-red);">[DANGER-ZONE]</span>
+        <h2 style="color: var(--accent-red);">危险操作 // 清空存档</h2>
+        <button class="close-btn" id="close-reset-modal-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-main); line-height: 1.6;">
+          此操作将彻底抹除当前浏览器的所有聊天记录、日记、记忆库、书摘及配置，且无法恢复。
+        </p>
+        <div class="form-group" style="margin-top: 8px;">
+          <label style="color: var(--accent-red);">请在下方输入“我要清空这个存档”以确认：</label>
+          <input type="text" id="reset-confirm-input" placeholder="我要清空这个存档" autocomplete="off" style="border-color: var(--accent-red);">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="tac-btn" id="cancel-reset-btn">取消</button>
+        <button class="tac-btn" id="execute-reset-btn" style="background: var(--accent-red); color: #fff; border-color: var(--accent-red); font-weight: bold;">确认彻底清空</button>
       </div>
     </div>
   </div>

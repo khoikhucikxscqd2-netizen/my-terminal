@@ -589,7 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (modalFooter) modalFooter.style.display = 'none';
       
       // 2. 显示第二层的记忆库视图
-      if (memView) memView.classList.remove('hidden');
+      if (memView) memView.style.display = 'flex';
       
       // 3. 修改顶栏标题，装上返回按钮
       if (panelTag) panelTag.innerHTML = '[MEM-DB]';
@@ -606,7 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (modalFooter) modalFooter.style.display = '';
           
           // 重新隐藏第二层
-          if (memView) memView.classList.add('hidden');
+          if (memView) memView.style.display = 'none';
           
           // 恢复原本的标题栏
           if (panelTag) panelTag.innerHTML = originalTag;
@@ -787,4 +787,49 @@ document.addEventListener('DOMContentLoaded', () => {
   renderMemoryList();
   checkMemoryWatermark();
   document.getElementById('force-summary-btn')?.addEventListener('click', triggerMemorySummary);
+});
+// ==========================================
+// 新增：一键重置存档逻辑（手打二次确认）
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+  const resetModal = document.getElementById('reset-confirm-modal');
+  const resetInput = document.getElementById('reset-confirm-input');
+
+  // 打开确认弹窗
+  document.getElementById('open-reset-modal-btn')?.addEventListener('click', () => {
+    if (resetInput) resetInput.value = '';
+    resetModal?.classList.remove('hidden');
+  });
+
+  // 关闭确认弹窗
+  const closeResetModal = () => resetModal?.classList.add('hidden');
+  document.getElementById('close-reset-modal-btn')?.addEventListener('click', closeResetModal);
+  document.getElementById('cancel-reset-btn')?.addEventListener('click', closeResetModal);
+
+  // 执行清空
+  document.getElementById('execute-reset-btn')?.addEventListener('click', () => {
+    const val = (resetInput?.value || '').trim();
+    if (val !== '我要清空这个存档') {
+      alert('输入内容不匹配！必须完整输入：我要清空这个存档');
+      return;
+    }
+
+    // 1. 清理所有 localStorage 里的业务数据
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('ezekiel_') || k.startsWith('Terminal_'))) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+
+    // 2. 顺便清理点唱机里存的本地音乐数据库 (IndexedDB)
+    try {
+      indexedDB.deleteDatabase('TerminalMusicDB');
+    } catch (e) {}
+
+    alert('✓ 存档已彻底清空！终端即将重启为初始状态...');
+    window.location.reload();
+  });
 });
