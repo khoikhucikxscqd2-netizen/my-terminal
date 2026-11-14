@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="themes.css">
   <link rel="stylesheet" href="modules/anniversary/anniversary.css">
   <link rel="stylesheet" href="modules/timecapsule/timecapsule.css">
+  <link rel="stylesheet" href="modules/music/music.css"> <!-- 🎵 新增音乐模块 CSS -->
 </head>
 <body>
   <!-- 顶部终端状态栏 -->
@@ -17,6 +18,7 @@
       <span class="brand-title">TAC-LINK // TERMINAL-OS v1.0</span>
     </div>
     <div class="terminal-metrics">
+      <span class="metric-item" id="global-music-ticker" style="display:none; color: var(--accent-amber); max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="点击打开点唱机">🎵 暂无播放</span>
       <span class="metric-item">MEM LOAD: <strong id="token-counter">0 / 100,000</strong> TKN</span>
       <button class="icon-btn" id="open-modules-btn" title="扩展功能模块">❖ 扩展</button>
       <button class="icon-btn" id="open-settings-btn" title="终端后台配置">🔧 配置</button>
@@ -182,11 +184,9 @@
           <div class="ext-icon">📅</div>
           <div class="ext-name">纪念日档案</div>
         </div>
-        
-        <!-- 待开发占位模块：为未来画大饼 -->
-        <div class="ext-module-card locked" title="建设中...">
-          <div class="ext-icon">🎟️</div>
-          <div class="ext-name">积分兑换(待建)</div>
+        <div class="ext-module-card" id="btn-open-music">
+          <div class="ext-icon">🎵</div>
+          <div class="ext-name">点唱机</div>
         </div>
         <div class="ext-module-card" id="btn-open-capsule">
           <div class="ext-icon">📮</div>
@@ -549,6 +549,54 @@
     </div>
   </div>
 
+<!-- 🎵 扩展模块：点唱机 -->
+  <div class="modal-backdrop hidden" id="music-modal" style="z-index: 120;">
+    <div class="tac-modal" style="max-width: 460px;">
+      <div class="panel-header modal-header">
+        <span class="panel-tag">[AUDIO-DECK]</span>
+        <h2>点唱机 // MUSIC PLAYER</h2>
+        <button class="close-btn" id="close-music-btn">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 12px;">
+        <div class="music-player-dashboard">
+          <div class="music-info-display">
+            <div class="music-scroll-text" id="now-playing-title">等待接入音频信号...</div>
+            <div class="music-time-bar">
+              <span id="music-current-time">00:00</span>
+              <input type="range" id="music-progress" value="0" min="0" max="100">
+              <span id="music-total-time">00:00</span>
+            </div>
+          </div>
+          <div class="music-controls">
+            <button class="icon-btn" id="btn-music-mode" title="切换模式">🔁</button>
+            <button class="icon-btn" id="btn-music-prev">⏮</button>
+            <button class="tac-btn primary" id="btn-music-play" style="width: 70px;">▶ 播放</button>
+            <button class="icon-btn" id="btn-music-next">⏭</button>
+            <div style="position: relative; display: flex; align-items: center;">
+              <button class="icon-btn" id="btn-music-vol" title="音量">🔊</button>
+              <input type="range" id="music-vol-slider" class="vol-slider hidden" min="0" max="1" step="0.05" value="0.7">
+            </div>
+          </div>
+        </div>
+
+        <div class="goals-bar" style="margin-top: 16px; background: transparent; border: none; padding: 0;">
+          <span class="goals-label" style="color: var(--text-muted);">// 本地记忆歌单 (IndexedDB)</span>
+          <div>
+            <input type="file" id="music-upload-input" accept="audio/*" multiple style="display: none;">
+            <button class="mini-btn" id="btn-trigger-music-upload" style="border-color: var(--accent-amber); color: var(--accent-amber);">+ 导入本地音乐</button>
+          </div>
+        </div>
+        
+        <div class="music-playlist" id="music-playlist-container">
+          <p class="slot-hint" style="margin-top: 20px;">列表为空，点击上方导入手机/电脑里的音频文件。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 在页面的某个绝对角落放一个隐形的真实播放器 -->
+  <audio id="core-audio-player" style="display: none;"></audio>
+
   <!-- 脚本按顺序引入 -->
   <script src="api.js"></script>
   <script src="chat.js"></script>
@@ -557,5 +605,6 @@
   <script src="reading.js"></script>
   <script src="modules/anniversary/anniversary.js"></script>
   <script src="modules/timecapsule/timecapsule.js"></script>
+  <script src="modules/music/music.js"></script>
 </body>
 </html>
