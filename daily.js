@@ -124,7 +124,7 @@ async function handleUserMoodChange(icon, label) {
   window.isGenerating = true;
 
   const userName = cfg.userName || 'USER';
-  const silentMoodPrompt = `[系统情绪板同步事件：${userName} 刚刚把心情板更新为【${icon} ${label}】。请完全贴合你的人设，立刻在聊天中自然地回应这个情绪变化（如果是疲惫、烦躁或委屈就去关心、安抚或哄对方；如果是开心或想贴贴就顺着互动）。同时，请在回复的最后另起一行，严格用格式 [MOOD: 单个emoji | 15字以内的你此刻心情独白] 附上你自己的状态，系统会自动提取该行更新到情绪板上，不要解释这个格式。]`;
+  const silentMoodPrompt = `[系统情绪板同步事件：对方刚刚把心情板更新为【{icon} {label}】。请完全贴合你的人设，立刻在聊天中自然地回应这个情绪变化。同时，请在回复的最后另起一行，严格用格式 [MOOD: 单个emoji | 15字以内的你此刻心情独白] 附上你自己的状态，系统会自动提取该行更新到情绪板上，不要解释这个格式。]`;
 
   const aiBubble = appendMessageBubble('assistant', '📡 感知到情绪板变化...', Date.now(), true);
   const chatBox = document.getElementById('chat-messages');

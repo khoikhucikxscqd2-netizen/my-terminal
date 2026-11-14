@@ -393,7 +393,7 @@ async function rollForSecretCapsule(triggerMood) {
   const prompt = `[系统最高权限隐秘事件]
 ${userName} 刚才在终端把自己的心情更新为了【${triggerMood}】。作为 ${aiName}，你察觉到了她的情绪变化。
 请你瞒着她，悄悄往她的“时空信箱”里塞一封秘密留信。这封信会被加锁，直到 ${unlockDateStr}（明天）才能拆开。
-请结合她当前的心情，写下你此刻想对她说的、安慰或温柔的话语。
+请结合她当前的心情，以第一人称写下你此刻最真实想对她说的话语。
 直接输出信件正文，不要有任何多余的解释。`;
 
   try {

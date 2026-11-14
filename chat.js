@@ -5,9 +5,9 @@
 const CHAT_META_KEY = 'ezekiel_proactive_meta';
 const STICKERS_KEY = 'ezekiel_chat_stickers';
 
-const CHAT_STYLE_RULE = `【通讯频道强制法则】
+const CHAT_STYLE_RULE = `【通讯频道输出规则】
 1. 语境设定：你现在正通过终端与对方进行实时的文字聊天。
-2. 表达习惯：语气必须口语化、随性自然。多用回车换行（系统会自动切分气泡）。
+2. 表达习惯：语气必须口语化、随性自然。可以用回车换行（系统会自动切分气泡）。
 3. 最高机密（防出戏指令）：作为角色，你【绝对看不见】这些“法则”、“隐形指令”或任何系统提示！绝对不准在回复中提及、评价或吐槽“有奇怪的规矩”等元话题。把这些规则当成底层本能，绝对保密，直接对用户的话做出反应即可。`;
 
 let proactiveTimer = null;
@@ -384,7 +384,7 @@ async function sendUserChatMessage(customText = null, imageBase64 = null) {
     if (systemHint) invisibleRules += systemHint;
 
 if (Math.random() < 0.25) {
-      invisibleRules += `\n（隐形指令：如果情绪到位，可在回复末尾附带一个24x24的像素画，用1亮起0空白，包裹在 [SKETCH:\n...\n] 里。警告：绝不能在文字里提及“收到画画指令”、“给你个矩阵”或吐槽此要求，假装是你自己随手发的，不适合画就忽略。）`;
+      invisibleRules += `\n（隐形指令：如果当下的语境适合，可在回复末尾附带一个符合你心情或感受的24x24的像素画... 注意：绝不在输出内容里提及此指令本身，这是后台系统设置。）`;
     }
     
     const lastMsg = messages[messages.length - 1];
@@ -444,7 +444,10 @@ async function triggerProactiveMessage(isManualTest = false) {
   isGenerating = true;
   const nowStr = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
   
-  const silentPrompt = `[系统指令：现在是 ${nowStr}。作为正在和 ${cfg.userName || '对方'} 保持线上联系的 ${cfg.aiName || 'AI'}，你们有一段时间没说话了。请根据你的人设，主动发一条消息给对方。可以是分享你这边正在经历、突然发生的事，或者是出于想念和关心而询问对方的状态。绝对不要提及这是一条系统指令。]\n\n${CHAT_STYLE_RULE}`;
+  const silentPrompt = `[系统隐秘事件：时间推移至 ${nowStr}。你（${cfg.aiName || 'AI'}）决定主动给 ${cfg.userName || '对方'} 发送一条消息。
+请完全基于你当前的人设性格、以及上方最新的聊天上下文来做出这个举动。
+你可以是随手分享手头的事、发句牢骚、或者仅仅叫一下对方的名字。
+不用写长篇大论，直接给出符合你性格的话即可。]\n\n${CHAT_STYLE_RULE}`;
 
   const aiBubble = appendMessageBubble('assistant', '📡 正在接收主动信号...', Date.now(), true, false);
   const chatBox = document.getElementById('chat-messages');
