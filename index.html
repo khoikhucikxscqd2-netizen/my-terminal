@@ -111,7 +111,8 @@
               <button class="icon-btn" id="open-sticker-btn" title="展开/收起表情包面板">😀 表情</button>
               <input type="file" id="upload-chat-img-input" accept="image/*" style="display: none;">
               <button class="icon-btn" id="upload-chat-img-btn" title="发送本地图片">📎 图片</button>
-              <input type="text" id="quick-test-input" placeholder="输入文字，可图文并茂..." autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');">            <button class="tac-btn primary" id="quick-send-btn">发送</button>
+              <textarea id="quick-test-input" rows="1" placeholder="输入文字（电脑回车发送 / 手机回车换行）..." style="resize: none; overflow-y: auto; max-height: 110px; line-height: 1.45;"></textarea>
+              <button class="tac-btn primary" id="quick-send-btn">发送</button>
             </div>
           </div>
           </div>
@@ -440,21 +441,31 @@
               <input type="password" id="cfg-api-key" placeholder="填入访问密码">
             </div>
             <div class="form-group">
-              <label>调用模型 (Model ID)</label>
-              <div style="display: flex; gap: 8px;">
-                <select id="cfg-model" style="flex: 1; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-dim); padding: 8px;"></select>
-                <button class="tac-btn" id="fetch-models-btn" title="获取模型">📡 检索</button>
-              </div>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
               <label>全局记忆上限 (Max Tokens)</label>
               <input type="number" id="cfg-max-tokens" value="100000" step="5000">
             </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="gap: 8px;">
+              <div>
+                <label>① 聊天模型 (Chat // 核心对话)</label>
+                <div style="display: flex; gap: 6px; margin-top: 4px;">
+                  <select id="cfg-model" style="flex: 1; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-dim); padding: 6px;"></select>
+                  <button class="tac-btn" id="fetch-models-btn" title="检索全部可用模型">📡 检索</button>
+                </div>
+              </div>
+              <div>
+                <label>② 档案共读模型 (日记 / 书库 / 信箱)</label>
+                <select id="cfg-model-archive" style="margin-top: 4px; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-dim); padding: 6px;"></select>
+              </div>
+              <div>
+                <label>③ 日常任务模型 (Daily 情绪与任务)</label>
+                <select id="cfg-model-daily" style="margin-top: 4px; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-dim); padding: 6px;"></select>
+              </div>
+            </div>
             <div class="form-group">
               <label>主动通讯策略 (Proactive)</label>
-              <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.02); padding: 8px; border: 1px dashed var(--border-dim);">
+              <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.02); padding: 8px; border: 1px dashed var(--border-dim); height: 100%; justify-content: center;">
                 <select id="cfg-proactive" style="width: 100%;">
                   <option value="on">开启自动监测</option>
                   <option value="off">静默模式</option>

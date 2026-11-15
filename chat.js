@@ -618,8 +618,31 @@ document.addEventListener('DOMContentLoaded', () => {
   
   if (sendBtn) sendBtn.addEventListener('click', () => sendUserChatMessage());
   if (inputEl) {
+    // 1. 输入文字时自动撑高输入框（最高 110px）
+    const autoResizeInput = () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 110) + 'px';
+    };
+    inputEl.addEventListener('input', autoResizeInput);
+
+    // 2. 区分手机与电脑的回车逻辑
     inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendUserChatMessage(); }
+      if (e.key === 'Enter') {
+        const isMobile = window.innerWidth <= 820 || ('ontouchstart' in window && navigator.maxTouchPoints > 0);
+        if (isMobile) {
+          // 手机端：允许默认回车换行，点发送按钮才发送
+          setTimeout(autoResizeInput, 0);
+          return;
+        }
+        // 电脑端：Shift+Enter 换行，单独按 Enter 直接发送
+        if (!e.shiftKey) {
+          e.preventDefault();
+          sendUserChatMessage();
+          inputEl.style.height = 'auto';
+        } else {
+          setTimeout(autoResizeInput, 0);
+        }
+      }
     });
   }
 

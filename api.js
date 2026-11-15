@@ -15,7 +15,7 @@ const STORAGE_KEYS = {
 const DEFAULT_AVATAR = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0icmdiYSgwLCAyMzAsIDExOCwgMC4xKSIvPjwvc3ZnPg==';
 
 const DEFAULT_CONFIG = {
-  apiHost: '', apiKey: '', model: '', maxTokens: 100000,
+  apiHost: '', apiKey: '', model: '', modelArchive: '', modelDaily: '', maxTokens: 100000,
   proactive: 'on', proactiveMax: 5, proactiveInterval: '15-45', systemPrompt: '',
   userName: 'USER', aiName: 'AI',
   userAvatar: DEFAULT_AVATAR, aiAvatar: DEFAULT_AVATAR,
@@ -245,15 +245,19 @@ function updateTopBarMetrics() {
   if (dotEl) dotEl.className = getConfig().apiKey ? 'status-dot online' : 'status-dot';
 }
 
-async function callTacticalAPI(messages) {
+async function callTacticalAPI(messages, channel = 'chat') {
   const cfg = getConfig();
   if (!cfg.apiHost || !cfg.apiKey) throw new Error('未配置 API 主机地址或秘钥。');
   const baseUrl = normalizeBaseUrl(cfg.apiHost);
   
+  let targetModel = cfg.model;
+  if (channel === 'archive' && cfg.modelArchive) targetModel = cfg.modelArchive;
+  if (channel === 'daily' && cfg.modelDaily) targetModel = cfg.modelDaily;
+
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey.trim()}` },
-    body: JSON.stringify({ model: cfg.model.trim(), messages: messages, temperature: 0.75 })
+    body: JSON.stringify({ model: (targetModel || '').trim(), messages: messages, temperature: 0.75 })
   });
 
   if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
@@ -316,10 +320,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.files[0]) compressImage(e.target.files[0], (base64) => { document.getElementById('preview-ai-avatar').src = base64; });
   });
 
-  function populateModelSelect(modelsArray, selectedModel) {
-    const select = document.getElementById('cfg-model');
-    if(!select) return;
+  function populateSingleSelect(selectId, modelsArray, selectedModel, allowDefaultFallback = false) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
     select.innerHTML = '';
+    if (allowDefaultFallback) {
+      const defOpt = document.createElement('option');
+      defOpt.value = '';
+      defOpt.textContent = '（默认跟随 ① 聊天模型）';
+      select.appendChild(defOpt);
+    }
     modelsArray.forEach(m => {
       const opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.id; select.appendChild(opt);
     });
@@ -329,10 +339,17 @@ document.addEventListener('DOMContentLoaded', () => {
     select.value = selectedModel || '';
   }
 
+  function populateModelSelect(modelsArray, selectedChat, selectedArchive, selectedDaily) {
+    populateSingleSelect('cfg-model', modelsArray, selectedChat, false);
+    populateSingleSelect('cfg-model-archive', modelsArray, selectedArchive, true);
+    populateSingleSelect('cfg-model-daily', modelsArray, selectedDaily, true);
+  }
+
   function loadForm() {
     const cfg = getConfig();
     if(document.getElementById('cfg-api-host')) document.getElementById('cfg-api-host').value = cfg.apiHost || '';
     if(document.getElementById('cfg-api-key')) document.getElementById('cfg-api-key').value = cfg.apiKey || '';
+    if(document.getElementById('cfg-max-tokens')) document.getElementById('cfg-max-tokens').value = cfg.maxTokens || 100000;
     if(document.getElementById('cfg-proactive')) document.getElementById('cfg-proactive').value = cfg.proactive || 'on';
     if(document.getElementById('cfg-proactive-max')) document.getElementById('cfg-proactive-max').value = cfg.proactiveMax || 5;
     if(document.getElementById('cfg-proactive-interval')) document.getElementById('cfg-proactive-interval').value = cfg.proactiveInterval || '15-45';
@@ -344,7 +361,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if(document.getElementById('cfg-sync-secret')) document.getElementById('cfg-sync-secret').value = cfg.syncSecret || '';
     
     applyTheme(cfg.theme || 'tactical-green');
-    populateModelSelect(cfg.model ? [{id: cfg.model}] : [], cfg.model);
+    const initModels = [];
+    [cfg.model, cfg.modelArchive, cfg.modelDaily].forEach(id => {
+      if (id && !initModels.find(m => m.id === id)) initModels.push({ id });
+    });
+    populateModelSelect(initModels, cfg.model, cfg.modelArchive, cfg.modelDaily);
   }
 
   function readForm() {
@@ -352,6 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
       apiHost: document.getElementById('cfg-api-host')?.value.trim() || '',
       apiKey: document.getElementById('cfg-api-key')?.value.trim() || '',
       model: document.getElementById('cfg-model')?.value.trim() || '',
+      modelArchive: document.getElementById('cfg-model-archive')?.value.trim() || '',
+      modelDaily: document.getElementById('cfg-model-daily')?.value.trim() || '',
       maxTokens: Number(document.getElementById('cfg-max-tokens')?.value) || 100000,
       proactive: document.getElementById('cfg-proactive')?.value || 'on',
       proactiveMax: Number(document.getElementById('cfg-proactive-max')?.value) || 5,
@@ -400,7 +423,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!response.ok) throw new Error('不支持自动检索');
       const data = await response.json();
       if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-        populateModelSelect(data.data, document.getElementById('cfg-model').value || data.data[0].id);
+        populateModelSelect(
+          data.data,
+          document.getElementById('cfg-model').value || data.data[0].id,
+          document.getElementById('cfg-model-archive').value,
+          document.getElementById('cfg-model-daily').value
+        );
         testResultEl.style.color = '#38b27b';
         testResultEl.textContent = `✓ 成功获取 ${data.data.length} 个模型！`;
       } else {
@@ -409,7 +437,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       const manualId = prompt('当前接口不支持自动检索列表（豆包/火山方舟请直接粘贴你的接入点 ID，例如 ep-2026xxxx-xxxxx）：', document.getElementById('cfg-model').value);
       if (manualId && manualId.trim()) {
-        populateModelSelect([{ id: manualId.trim() }], manualId.trim());
+        populateModelSelect(
+          [{ id: manualId.trim() }],
+          manualId.trim(),
+          document.getElementById('cfg-model-archive').value,
+          document.getElementById('cfg-model-daily').value
+        );
         testResultEl.style.color = '#38b27b';
         testResultEl.textContent = `✓ 已手动设定模型/接入点: ${manualId.trim()}`;
       } else {
@@ -472,14 +505,20 @@ document.addEventListener('DOMContentLoaded', () => {
   updateTopBarMetrics();
 });
 
-async function callTacticalStreamAPI(messages, onChunk) {
+async function callTacticalStreamAPI(messages, onChunk, channel = 'chat') {
   const cfg = getConfig();
   const baseUrl = normalizeBaseUrl(cfg.apiHost);
+
+  let targetModel = cfg.model;
+  if (channel === 'archive' && cfg.modelArchive) targetModel = cfg.modelArchive;
+  if (channel === 'daily' && cfg.modelDaily) targetModel = cfg.modelDaily;
+
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey.trim()}` },
-    body: JSON.stringify({ model: cfg.model.trim(), messages: messages, temperature: 0.75, stream: true })
+    body: JSON.stringify({ model: (targetModel || '').trim(), messages: messages, temperature: 0.75, stream: true })
   });
+
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const reader = response.body.getReader();
   const decoder = new TextDecoder('utf-8');
