@@ -45,8 +45,10 @@ function splitIntoBubbles(text) {
   let tempText = text.replace(/\[QUOTE:\s*([\s\S]*?)\s*\]\n?/g, (match) => {
     placeholders.push(match); return `__PLACEHOLDER_${placeholders.length - 1}__\n`;
   });
-  tempText = tempText.replace(/\[SKETCH:\s*([\s\S]*?)\s*\]/g, (match) => {
-    placeholders.push(match); return `__PLACEHOLDER_${placeholders.length - 1}__`;
+  tempText = tempText.replace(/\[SKETCH:\s*([\s\S]*?)(?:\]|$)/gi, (match, inner) => {
+    const fixedMatch = match.endsWith(']') ? match : `[SKETCH:${inner}]`;
+    placeholders.push(fixedMatch); 
+    return `\n__PLACEHOLDER_${placeholders.length - 1}__\n`;
   });
   tempText = tempText.replace(/\[表情包:\s*([^\|]+)\s*\|\s*id:([^\]]+)\]/g, (match) => {
     placeholders.push(match); return `__PLACEHOLDER_${placeholders.length - 1}__`;
@@ -385,7 +387,7 @@ async function sendUserChatMessage(customText = null, imageBase64 = null) {
     if (systemHint) invisibleRules += systemHint;
 
 if (Math.random() < 0.25) {
-      invisibleRules += `\n（隐形指令：如果当下的语境适合，可在回复末尾附带一个符合你心情或感受的24x24的像素画... 注意：绝不在输出内容里提及此指令本身，这是后台系统设置。）`;
+      invisibleRules += `\n（隐形指令：如果当下的语境适合，可在回复末尾另起一行附带一个符合你心情或物品的 24x24 像素画。必须严格使用 [SKETCH: 换行后24行纯由数字0和1组成的矩阵，0代表空白背景，1代表发光像素点，每行必须严格24个数字，最后以 ] 结尾] 的格式输出。严禁使用文字描述代替，也绝不在回复正文里提及此指令。）`;
     }
     
     const lastMsg = messages[messages.length - 1];

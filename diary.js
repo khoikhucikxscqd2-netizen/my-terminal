@@ -108,8 +108,15 @@ async function generateDiaryForDate(targetDateKey, displayDate, isManualToday = 
   const userName = cfg.userName || 'USER';
   const aiName = cfg.aiName || 'AI';
 
-  // 1. 严格按日期键过滤出那一天的所有聊天记录，绝不混入其他日期
-  const allHistory = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
+  // 1. 汇总所有频道（主频道+子频道）在那一天的所有聊天记录，按时间正序排列
+  let allHistory = [];
+  const sessions = typeof getSessions === 'function' ? getSessions() : [{ id: 'default' }];
+  sessions.forEach(s => {
+    const key = s.id === 'default' ? 'ezekiel_chat_history' : 'ezekiel_chat_history_' + s.id;
+    const msgs = JSON.parse(localStorage.getItem(key) || '[]');
+    allHistory = allHistory.concat(msgs);
+  });
+  allHistory.sort((a, b) => (a.time || 0) - (b.time || 0));
   const dayMsgs = allHistory.filter(m => m.time && getDateInfo(m.time).dateKey === targetDateKey);
 
   // 如果是自动跨天检测，且昨天没有任何聊天记录，则跳过不浪费 Token
@@ -214,8 +221,13 @@ function checkAutoYesterdayDiary() {
   // 如果昨天的日记已经写过了，不再重复自动生成
   if (existing.some(d => d.dateKey === yesterdayInfo.dateKey)) return;
 
-  // 检查聊天记录里有没有昨天的消息
-  const allHistory = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
+  // 检查所有频道里有没有昨天的消息
+  let allHistory = [];
+  const sessions = typeof getSessions === 'function' ? getSessions() : [{ id: 'default' }];
+  sessions.forEach(s => {
+    const key = s.id === 'default' ? 'ezekiel_chat_history' : 'ezekiel_chat_history_' + s.id;
+    allHistory = allHistory.concat(JSON.parse(localStorage.getItem(key) || '[]'));
+  });
   const hasYesterdayMsgs = allHistory.some(m => m.time && getDateInfo(m.time).dateKey === yesterdayInfo.dateKey);
 
   if (hasYesterdayMsgs) {

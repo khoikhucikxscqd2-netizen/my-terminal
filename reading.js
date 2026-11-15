@@ -191,10 +191,8 @@ async function requestChunkAnnotation() {
 ${numberedText}`;
 
   try {
-    const reply = await callTacticalAPI([
-      { role: 'system', content: cfg.systemPrompt || `你是 ${aiName}` },
-      { role: 'user', content: prompt }
-    ]);
+    const { messages } = buildContextPayload(prompt);
+    const reply = await callTacticalAPI(messages);
 
     const jsonMatch = reply.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
@@ -264,10 +262,8 @@ async function sendDiscussionReply() {
   syncCurrentBookToStorage();
   openDiscussionPanel(id);
 
-  const discussMessages = [
-    { role: 'system', content: getConfig().systemPrompt },
-    { role: 'user', content: `我们在共读《${currentBook.title}》。原文是：“${sentence.text}”\n你的批注是：“${annotation.comment}”\n请针对后续探讨简短回应，保持人设。` }
-  ];
+  const contextPrompt = `我们在共读《${currentBook.title}》。原文是：“${sentence.text}”\n你的批注是：“${annotation.comment}”\n请结合我们平时的相处与聊天语境，针对后续探讨简短回应，保持人设。`;
+  const { messages: discussMessages } = buildContextPayload(contextPrompt);
   annotation.replies.forEach(r => discussMessages.push(r));
 
   const historyBox = document.getElementById('discuss-history');

@@ -656,24 +656,31 @@ function getInjectableMemories() {
   return res;
 }
 
-// 2. 检查 50,000 Token 水位线并更新进度条
+// 2. 检查全局所有窗口的 50,000 Token 水位线并更新进度条
 function checkMemoryWatermark() {
-  const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
-  const activeId = localStorage.getItem('ezekiel_active_session') || 'default';
-  const lastTime = Number(localStorage.getItem('ezekiel_memory_cursor_' + activeId) || 0);
-  const unarchived = history.filter(m => m.time > lastTime);
+  let allHistory = [];
+  const sessions = typeof getSessions === 'function' ? getSessions() : [{ id: 'default' }];
+  sessions.forEach(s => {
+    const key = s.id === 'default' ? 'ezekiel_chat_history' : 'ezekiel_chat_history_' + s.id;
+    const msgs = JSON.parse(localStorage.getItem(key) || '[]');
+    allHistory = allHistory.concat(msgs);
+  });
+  // 按时间正序排好所有窗口的对话
+  allHistory.sort((a, b) => (a.time || 0) - (b.time || 0));
+
+  const lastTime = Number(localStorage.getItem('ezekiel_memory_cursor') || 0);
+  const unarchived = allHistory.filter(m => (m.time || 0) > lastTime);
   
   let tokenCount = 0;
   unarchived.forEach(m => tokenCount += estimateTokens(m.content));
 
   const progressEl = document.getElementById('memory-progress-bar');
   const textEl = document.getElementById('memory-progress-text');
-  const btnEl = document.getElementById('force-summary-btn');
 
   if (progressEl && textEl) {
     let percent = Math.min(100, (tokenCount / 50000) * 100);
     progressEl.style.width = percent + '%';
-    textEl.textContent = `距离下次归档：${tokenCount.toLocaleString()} / 50,000 TKN`;
+    textEl.textContent = `全频道累计待归档：${tokenCount.toLocaleString()} / 50,000 TKN`;
     if (percent >= 100) {
       progressEl.style.background = 'var(--accent-red)';
     } else {
@@ -689,12 +696,12 @@ function checkMemoryWatermark() {
   return { tokenCount, unarchived };
 }
 
-// 3. 触发归档生成
+// 3. 触发全局归档生成
 let isSummarizing = false;
 async function triggerMemorySummary() {
   if (isSummarizing) return;
   const { unarchived } = checkMemoryWatermark();
-  if (unarchived.length === 0) return alert('当前没有需要归档的新对话记录。');
+  if (unarchived.length === 0) return alert('当前所有频道均没有需要归档的新对话记录。');
   isSummarizing = true;
 
   const btnEl = document.getElementById('force-summary-btn');
@@ -708,10 +715,10 @@ async function triggerMemorySummary() {
     const speaker = m.role === 'user' ? userName : aiName;
     return `${speaker}: ${m.content.replace(/\[.*?\]/g, '')}`;
   }).join('\n');
-  if (chatText.length > 25000) chatText = chatText.slice(-25000); // 防爆破限流
+  if (chatText.length > 25000) chatText = chatText.slice(-25000);
 
   const prompt = `[系统记忆归档指令]
-请完全代入你（${aiName}）的视角与核心人设，回顾以上对话记录，为自己留存一份精炼的阶段性记忆档案（严格控制在 150 字以内）。
+请完全代入你（${aiName}）的视角与核心人设，回顾以上按时间顺序整理的对话记录，为自己留存一份精炼的阶段性记忆档案（严格控制在 150 字以内）。
 记录需客观提炼以下三个维度的核心信息：
 1. 关系与事件进展：这段时间内双方共同经历的关键事件，或彼此关系状态的实质推进；
 2. 互动与深层触动：交流中具有意义的共识、情绪波动或值得留存的对话瞬间；
@@ -736,9 +743,8 @@ ${chatText}`;
     });
     localStorage.setItem('ezekiel_long_term_memories', JSON.stringify(mems));
     
-    // 更新游标为最后一条已归档消息的时间戳
-    const activeId = localStorage.getItem('ezekiel_active_session') || 'default';
-    localStorage.setItem('ezekiel_memory_cursor_' + activeId, unarchived[unarchived.length - 1].time.toString());
+    // 更新全局统一游标为最后一条已归档消息的时间戳
+    localStorage.setItem('ezekiel_memory_cursor', unarchived[unarchived.length - 1].time.toString());
     
     renderMemoryList();
     checkMemoryWatermark();

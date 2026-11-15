@@ -92,6 +92,27 @@ async function renderPlaylist() {
   });
 }
 
+// 辅助工具：读取音频文件转为纯 Base64（自动限制最大 2.5MB 截取片段防反代超时）
+function extractAudioBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const MAX_BYTES = 2.5 * 1024 * 1024; // 超过 2.5MB 时截取前 2.5MB 音频流（约 1~2 分钟精华）
+    const slicedBlob = blob.size > MAX_BYTES ? blob.slice(0, MAX_BYTES, blob.type) : blob;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const base64Data = dataUrl.split(',')[1];
+      let format = 'mp3';
+      if (blob.type.includes('wav')) format = 'wav';
+      else if (blob.type.includes('ogg')) format = 'ogg';
+      else if (blob.type.includes('m4a') || blob.type.includes('mp4')) format = 'mp4';
+      else if (blob.type.includes('flac')) format = 'flac';
+      resolve({ base64: base64Data, format });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(slicedBlob);
+  });
+}
+
 async function playSong(idx) {
   if (idx < 0 || idx >= currentPlaylist.length) return;
   currentIndex = idx;
@@ -114,52 +135,75 @@ async function playSong(idx) {
 
   renderPlaylist();
 
-  // 🌟 核心：开启 8 秒防抖后台评价倒计时
+  // 🌟 开启 8 秒防抖后台评价倒计时（传入完整的 song 对象以便读取真实音频）
   hasEvaluatedCurrentSong = false;
   if (evaluationTimer) clearTimeout(evaluationTimer);
   evaluationTimer = setTimeout(() => {
     if (!hasEvaluatedCurrentSong && !audio.paused) {
-      triggerSilentMusicEvaluation(song.title, song.artist);
-      hasEvaluatedCurrentSong = true; // 确保每首歌只评价一次
+      triggerSilentMusicEvaluation(song);
+      hasEvaluatedCurrentSong = true;
     }
   }, 8000);
 }
 
-// 🌟 利用现有的流式接口，静默向后台丢评价指令
-async function triggerSilentMusicEvaluation(title, artist) {
+// 🌟 利用现有的流式接口，一次性透传真实音频流并阅后即焚
+async function triggerSilentMusicEvaluation(song) {
   const cfg = typeof getConfig === 'function' ? getConfig() : {};
   if (!cfg.apiKey || typeof callTacticalStreamAPI === 'undefined') return;
-  if (window.isGenerating) return; // 如果正在聊天，就先憋着不说话
+  if (window.isGenerating) return;
   
   window.isGenerating = true;
-  const aiName = cfg.aiName || 'AI';
+  const styleRule = typeof CHAT_STYLE_RULE !== 'undefined' ? CHAT_STYLE_RULE : '';
   
-  // 极度客观中立的指令
-  const prompt = `[系统隐秘事件：对方正在终端播放歌曲《${title}》（歌手：${artist}）。
+  // 附带真实音频时的指令
+  const audioPrompt = `[系统隐秘事件：对方正在终端播放歌曲《${song.title}》（歌手：${song.artist}），随附了这首歌的真实音频流，请仔细听它的旋律、节奏、伴奏与人声情绪。
 请完全贴合你当前的人设性格，结合你们最近的聊天语境，随口在聊天室里对这首歌发表一些可长可短的评价、反应或联想。
-请直接以角色视角输出，不要提及这是系统提示。]\n\n${typeof CHAT_STYLE_RULE !== 'undefined' ? CHAT_STYLE_RULE : ''}`;
+请直接以角色视角输出，不要提及这是系统提示或音频文件。]\n\n${styleRule}`;
+
+  // 降级纯文字指令（当模型不支持听音频时自动切换）
+  const fallbackPrompt = `[系统隐秘事件：对方正在终端播放歌曲《${song.title}》（歌手：${song.artist}）。
+请完全贴合你当前的人设性格，结合你们最近的聊天语境，随口在聊天室里对这首歌发表一些可长可短的评价、反应或联想。
+请直接以角色视角输出，不要提及这是系统提示。]\n\n${styleRule}`;
 
   const aiBubble = typeof appendMessageBubble === 'function' 
-    ? appendMessageBubble('assistant', `🎵 正在倾听《${title}》...`, Date.now(), true, false) 
+    ? appendMessageBubble('assistant', `🎧 正在戴上耳机倾听《${song.title}》...`, Date.now(), true, false) 
     : null;
 
+  const streamHandler = (partial) => {
+    if (aiBubble) {
+      aiBubble.textContent = partial + ' ▋';
+      const cb = document.getElementById('chat-messages');
+      if (cb) cb.scrollTop = cb.scrollHeight;
+    }
+  };
+
   try {
-    const { messages } = buildContextPayload(prompt);
-    const fullReply = await callTacticalStreamAPI(messages, (partial) => {
-      if (aiBubble) {
-        aiBubble.textContent = partial + ' ▋';
-        const cb = document.getElementById('chat-messages');
-        if(cb) cb.scrollTop = cb.scrollHeight;
-      }
-    });
+    let fullReply = '';
+    try {
+      // 1. 尝试提取音频并发送给多模态模型直听
+      const audioPayload = await extractAudioBase64(song.blob);
+      const { messages } = buildContextPayload(audioPrompt, null, audioPayload);
+      fullReply = await callTacticalStreamAPI(messages, streamHandler);
+    } catch (audioErr) {
+      // 2. 如果当前模型/反代不支持音频格式（如报错 HTTP 400），无缝降级为纯歌名评价
+      console.warn('[点唱机] 当前模型不支持直听音频，已自动降级为曲名检索评价:', audioErr.message);
+      const { messages } = buildContextPayload(fallbackPrompt);
+      fullReply = await callTacticalStreamAPI(messages, streamHandler);
+    }
 
     if (aiBubble) {
-      const contentCol = aiBubble.parentElement; aiBubble.remove();
+      const contentCol = aiBubble.parentElement;
+      aiBubble.remove();
       const parts = splitIntoBubbles(fullReply);
       parts.forEach(part => {
-        const b = document.createElement('div'); b.className = 'msg-bubble msg-ai'; b.style.marginBottom = '6px';
-        b.innerHTML = formatMessageContent(part); contentCol.appendChild(b);
+        const b = document.createElement('div');
+        b.className = 'msg-bubble msg-ai';
+        b.style.marginBottom = '6px';
+        b.innerHTML = formatMessageContent(part);
+        contentCol.appendChild(b);
       });
+
+      // 🌟 阅后即焚：历史记录里只保存 AI 的文字评价，绝不保存任何音频编码，零缓存占用！
       const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
       history.push({ role: 'assistant', content: fullReply, time: Date.now(), isProactive: true });
       localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(history));
