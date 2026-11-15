@@ -826,11 +826,17 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // 1. 清理所有 localStorage 里的业务数据
+    // 1. 清理所有 localStorage 里的业务数据（包含日记、信箱、书库、记忆库、所有频道）
     const keysToRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && (k.startsWith('ezekiel_') || k.startsWith('Terminal_'))) {
+      if (k && (
+        k.startsWith('ezekiel_') || 
+        k.startsWith('Terminal_') || 
+        k === 'time_capsules_data' ||
+        k.includes('capsule') ||
+        k.includes('diary')
+      )) {
         keysToRemove.push(k);
       }
     }
