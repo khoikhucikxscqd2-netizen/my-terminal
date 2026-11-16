@@ -4,7 +4,7 @@
 // ==========================================
 (function() {
   // 🌟 1. 每次发布新版本时，改一下这个版本号，所有用户就会重新亮起未读红点！
-  const CURRENT_VERSION = '1.4.6';
+  const CURRENT_VERSION = '1.5.0';
   const STORAGE_KEY = 'terminal_changelog_read_ver';
 
   // 🌟 2. 写在这里的更新内容会自动渲染成漂亮的公告列表
