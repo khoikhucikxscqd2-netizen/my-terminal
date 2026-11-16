@@ -61,27 +61,50 @@ function splitChunkToSentences(rawText) {
 function handleTxtImport(event) {
   const file = event.target.files[0];
   if (!file) return;
-  if (file.size > 2 * 1024 * 1024) {
-    alert('⚠️ 档案过大 (超过2MB)。为保护本地存储不爆满，请将小说切割成多卷导入。');
+  if (file.size > 6 * 1024 * 1024) {
+    alert('⚠️ 档案超过 6MB 上限，为防止浏览器内存溢出，请适当拆分后再导入。');
     event.target.value = '';
     return;
   }
   
-  let title = file.name.replace('.txt', '');
+  let baseTitle = file.name.replace(/\.txt$/i, '');
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = e.target.result;
-    const chunks = chunkText(text);
+    const allChunks = chunkText(text);
     const lib = getLibrary();
-    lib.push({
-      id: Date.now().toString(),
-      title: title,
-      chunks: chunks,
-      progress: 0,
-      savedAnnotations: {}
-    });
-    saveLibrary(lib);
-    alert(`✓ 《${title}》导入成功，共切割为 ${chunks.length} 页。`);
+
+    // 单册每 250 页（约 30 万字）自动分卷，兼顾流畅度与浏览器存储安全
+    const PAGES_PER_VOL = 250;
+    try {
+      if (allChunks.length <= PAGES_PER_VOL) {
+        lib.push({
+          id: Date.now().toString(),
+          title: baseTitle,
+          chunks: allChunks,
+          progress: 0,
+          savedAnnotations: {}
+        });
+        saveLibrary(lib);
+        alert(`✓ 《${baseTitle}》导入成功，共切割为 ${allChunks.length} 页。`);
+      } else {
+        const totalVols = Math.ceil(allChunks.length / PAGES_PER_VOL);
+        for (let v = 0; v < totalVols; v++) {
+          const volChunks = allChunks.slice(v * PAGES_PER_VOL, (v + 1) * PAGES_PER_VOL);
+          lib.push({
+            id: (Date.now() + v).toString(),
+            title: `${baseTitle} (第${v + 1}卷)`,
+            chunks: volChunks,
+            progress: 0,
+            savedAnnotations: {}
+          });
+        }
+        saveLibrary(lib);
+        alert(`✓ 《${baseTitle}》大部头导入成功！\n已自动为您拆分为 ${totalVols} 卷（共 ${allChunks.length} 页），方便分册共读。`);
+      }
+    } catch (err) {
+      alert('✕ 浏览器本地存储空间已满，请先删除书库中已读完的旧书籍再试！');
+    }
   };
   reader.readAsText(file);
   event.target.value = '';
