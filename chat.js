@@ -341,7 +341,10 @@ async function sendUserChatMessage(customText = null, imageBase64 = null) {
   const text = customText || inputEl.value.trim();
   if (!text && !imageBase64) return;
 
-  if (!customText) inputEl.value = '';
+  if (!customText) {
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+  }
   isGenerating = true;
   resetProactiveTimer();
 
