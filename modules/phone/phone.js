@@ -203,7 +203,7 @@
           </div>
           <div style="background:#22252a; padding:16px; border-radius:12px; margin-bottom:16px;">
             <p style="color:#aaa; font-size:12px; margin-bottom:8px;">强制锚定所在地 (为空则AI推断)</p>
-            <input type="text" id="p-set-loc" placeholder="如：新纽约 / 南京" value="${phoneSettings.loc}" style="width:100%; padding:10px; background:#111215; border:1px solid #333; color:#fff; border-radius:6px;">
+            <input type="text" id="p-set-loc" placeholder="如：纽约 / 上海" value="${phoneSettings.loc}" style="width:100%; padding:10px; background:#111215; border:1px solid #333; color:#fff; border-radius:6px;">
           </div>
           <button style="width:100%; padding:12px; background:#1890ff; border:none; color:#fff; border-radius:8px; cursor:pointer;" onclick="pSaveSettings()">💾 保存设置</button>
         </div>
@@ -228,7 +228,11 @@
   };
 
   // --- API 数据请求与渲染 ---
-  document.getElementById('p-refresh-btn').addEventListener('click', fetchPhoneData);
+  document.getElementById('p-refresh-btn').addEventListener('click', () => {
+    if (confirm('即将消耗 Token 根据最新全频道记录更新手机数据，是否继续？')) {
+      fetchPhoneData();
+    }
+  });
 
   async function fetchPhoneData() {
     const cfg = getConfig();
