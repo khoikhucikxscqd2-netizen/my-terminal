@@ -1,0 +1,109 @@
+/* ==========================================
+   独立扩展插件：查手机 (Phone Inspection)
+   ========================================== */
+#phone-modal-backdrop { z-index: 300; display: flex; align-items: center; justify-content: center; }
+#phone-wrapper {
+  width: 100%; max-width: 380px; height: 80vh; max-height: 780px;
+  background: #1a1c20; border-radius: 40px; border: 4px solid #2e3238;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.8), inset 0 0 4px rgba(255,255,255,0.1);
+  position: relative; overflow: hidden; display: flex; flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  color: #e6e6e6; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.speaker-notch {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  width: 110px; height: 24px; background: #0d0e10; border-radius: 12px; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+}
+.speaker-notch .lens { width: 8px; height: 8px; border-radius: 50%; background: #182030; border: 1px solid #090a0c; margin-left: 55px; }
+
+/* 屏幕通用 */
+.p-screen {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  background-color: #16181c; background-size: cover; background-position: center;
+  transition: transform 0.3s ease, opacity 0.25s ease;
+}
+.p-status-bar {
+  height: 44px; padding: 12px 20px 0; display: flex; justify-content: space-between;
+  font-size: 12px; font-weight: 600; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); z-index: 1000;
+}
+.p-status-bar .icons { display: flex; gap: 5px; }
+
+/* 锁屏界面 */
+#p-lock-screen { z-index: 500; align-items: center; padding: 55px 20px 30px; justify-content: space-between; }
+#p-lock-screen::before { content:''; position:absolute; inset:0; background: rgba(0,0,0,0.4); z-index: -1; }
+.p-lock-clock { font-size: 64px; font-weight: 200; color: #fff; line-height: 1; text-align: center; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+.p-lock-date { font-size: 13px; color: #eee; text-align: center; margin-top: 8px; text-shadow: 0 1px 5px rgba(0,0,0,0.8); }
+.p-lock-alert {
+  background: rgba(30,30,30,0.6); backdrop-filter: blur(10px); border-radius: 14px;
+  padding: 10px 14px; width: 100%; display: flex; gap: 10px; align-items: center; margin-top: 20px;
+}
+.p-lock-alert .badge { width: 32px; height: 32px; border-radius: 8px; background: #1890ff; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.p-numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 24px; width: 250px; margin: 0 auto; }
+.p-num-key {
+  width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.15); backdrop-filter: blur(5px);
+  display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; cursor: pointer; transition: 0.15s;
+}
+.p-num-key:active { background: rgba(255,255,255,0.3); }
+.p-dots { display: flex; gap: 16px; justify-content: center; margin-bottom: 15px; }
+.p-dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #fff; transition: 0.2s; }
+.p-dot.filled { background: #fff; }
+
+/* 主屏幕 */
+#p-home-screen { z-index: 100; padding: 44px 16px 16px; display: none; justify-content: space-between; }
+#p-home-screen::before { content:''; position:absolute; inset:0; background: rgba(0,0,0,0.6); z-index: -1; }
+.p-widget-weather { background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); border-radius: 18px; padding: 14px; display: flex; justify-content: space-between; align-items: center; }
+.p-widget-weather .city { font-size: 13px; color: #ccc; font-weight: 600; }
+.p-widget-weather .temp { font-size: 28px; color: #fff; line-height: 1.2; }
+.p-widget-memo { background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); border-left: 4px solid #e0a96d; border-radius: 12px; padding: 10px 12px; margin-top: 12px; font-size: 12px; line-height: 1.5; color: #eee; }
+.p-app-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px 10px; margin-top: 24px; }
+.p-app-icon-box { display: flex; flex-direction: column; align-items: center; cursor: pointer; position: relative; }
+.p-app-icon { width: 54px; height: 54px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: transform 0.15s; }
+.p-app-icon-box:active .p-app-icon { transform: scale(0.9); }
+.p-app-name { font-size: 11px; color: #fff; margin-top: 6px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+.p-dock-bar { background: rgba(20,20,20,0.75); backdrop-filter: blur(15px); border-radius: 24px; padding: 12px; display: flex; justify-content: space-around; align-items: center; margin-top: auto; }
+.p-dock-bar .p-app-icon { width: 56px; height: 56px; border-radius: 14px; }
+
+/* App 内部通用窗口 */
+.p-app-window {
+  position: absolute; inset: 0; background: #1a1c20; z-index: 200;
+  display: none; flex-direction: column; transform: scale(0.95); opacity: 0; transition: all 0.2s ease-out;
+}
+.p-app-window.active { display: flex; transform: scale(1); opacity: 1; }
+.p-app-header {
+  padding: 44px 16px 12px; background: #22252a; border-bottom: 1px solid #2d3138;
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.p-app-header button { background: none; border: none; color: #1890ff; font-size: 14px; cursor: pointer; }
+.p-app-title { font-size: 15px; font-weight: 600; color: #fff; }
+.p-app-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; background: #111215; }
+.p-app-body::-webkit-scrollbar { width: 4px; }
+.p-app-body::-webkit-scrollbar-thumb { background: #333; }
+
+/* 详情弹窗 (查岗专用) */
+#p-detail-popup { position: absolute; inset: 0; background: #14161a; z-index: 300; display: none; flex-direction: column; transform: translateY(100%); transition: transform 0.25s; }
+#p-detail-popup.open { display: flex; transform: translateY(0); }
+.p-detail-content { flex: 1; overflow-y: auto; padding: 20px 16px; color: #ccc; font-size: 13px; line-height: 1.6; }
+
+/* 微信列表与气泡 */
+.p-wc-item { display: flex; padding: 12px 16px; border-bottom: 1px solid #1c1f24; align-items: center; gap: 12px; cursor: pointer; }
+.p-wc-avatar { width: 44px; height: 44px; border-radius: 6px; background: #2d333b; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.p-wc-name { font-size: 15px; color: #fff; font-weight: 500; }
+.p-wc-msg { font-size: 13px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+.p-chat-log { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; background: #111215; }
+.p-msg-row { display: flex; gap: 10px; max-width: 85%; }
+.p-msg-row.me { align-self: flex-end; flex-direction: row-reverse; }
+.p-bubble { padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; color: #eee; word-break: break-all; }
+.p-msg-row:not(.me) .p-bubble { background: #23272e; border-top-left-radius: 2px; }
+.p-msg-row.me .p-bubble { background: #07c160; color: #fff; border-top-right-radius: 2px; }
+
+/* 其他 App 列表元素 */
+.p-xhs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
+.p-xhs-card { background: #1e2126; border-radius: 10px; overflow: hidden; cursor: pointer; }
+.p-xhs-cover { height: 110px; background: #2a2e35; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 32px; padding: 10px; text-align: center; }
+.p-order-card { background: #1e2126; border-radius: 12px; padding: 14px; margin: 10px; cursor: pointer; }
+.p-photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; }
+.p-photo-box { aspect-ratio: 1; background: #22252a; display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; position: relative; background-size: cover; background-position: center; }
+.p-photo-box .del-btn { position: absolute; top: 4px; right: 4px; background: rgba(255,0,0,0.7); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; display: none; }
+.p-photo-box:hover .del-btn { display: block; }
