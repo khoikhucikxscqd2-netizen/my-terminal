@@ -47,7 +47,8 @@ async function triggerCloudPush() {
   const payload = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.startsWith('ezekiel_')) {
+    // 把 Terminal_ 开头的书库和书摘也加入云端打包名单
+    if (key && (key.startsWith('ezekiel_') || key.startsWith('Terminal_'))) {
       payload[key] = localStorage.getItem(key);
     }
   }
@@ -90,10 +91,11 @@ async function pullFromCloud(secretCode, statusBtn) {
     if (data && data.length > 0 && data[0].payload) {
       const cloudData = data[0].payload;
       for (const key in cloudData) {
-        if (key.startsWith('ezekiel_')) {
+        if (key.startsWith('ezekiel_') || key.startsWith('Terminal_')) {
           localStorage.setItem(key, cloudData[key]);
         }
       }
+
       if (statusBtn) {
         statusBtn.textContent = '✓ 恢复成功！重启中';
         statusBtn.style.background = 'var(--accent-amber)';
