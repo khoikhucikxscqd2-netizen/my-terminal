@@ -259,7 +259,7 @@ function openDiscussionPanel(sentenceId) {
   panel.dataset.currentId = id;
 
   document.getElementById('discuss-original-text').textContent = sentence.text;
-  document.getElementById('discuss-Terminal-comment').textContent = `${aiName}: ${annotation.comment}`;
+  document.getElementById('discuss-ezekiel-comment').textContent = `${aiName}: ${annotation.comment}`;
   
   const historyBox = document.getElementById('discuss-history');
   historyBox.innerHTML = annotation.replies.map(r => `
