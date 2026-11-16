@@ -111,3 +111,30 @@
 .p-photo-box { aspect-ratio: 1; background: #22252a; display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; position: relative; background-size: cover; background-position: center; }
 .p-photo-box .del-btn { position: absolute; top: 4px; right: 4px; background: rgba(255,0,0,0.7); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; display: none; }
 .p-photo-box:hover .del-btn { display: block; }
+/* 醒目圆润的顶部悬浮关闭按钮 */
+#close-phone-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 9999;
+  transition: all 0.2s;
+  padding: 0;
+}
+#close-phone-btn:hover {
+  background: #ff5252;
+  border-color: #ff5252;
+  transform: scale(1.08);
+}

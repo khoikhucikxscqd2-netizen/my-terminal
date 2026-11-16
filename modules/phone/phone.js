@@ -144,6 +144,7 @@
     document.getElementById('p-home-screen').style.display = 'none';
     pClearPin();
     updateClockAndWallpaper();
+    updateLockScreenLatestUserMsg();
     
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
@@ -314,15 +315,47 @@
     }
   }
 
-  function renderPhoneData() {
-    if (!phoneData) return;
-    
-    // 渲染锁屏与主屏组件
-    if (phoneData.lock) {
-      document.getElementById('p-lock-alert-box').style.display = 'flex';
+  // 点击手机外侧黑色背景也可直接关闭
+  document.getElementById('phone-modal-backdrop')?.addEventListener('click', (e) => {
+    if (e.target.id === 'phone-modal-backdrop') {
+      e.target.classList.add('hidden');
+    }
+  });
+
+  // 实时提取用户最新一条发言显示在锁屏上（零Token消耗）
+  function updateLockScreenLatestUserMsg() {
+    const cfg = getConfig();
+    let allHistory = [];
+    const sessions = typeof getSessions === 'function' ? getSessions() : [{ id: 'default' }];
+    sessions.forEach(s => {
+      const key = s.id === 'default' ? 'ezekiel_chat_history' : 'ezekiel_chat_history_' + s.id;
+      allHistory = allHistory.concat(JSON.parse(localStorage.getItem(key) || '[]'));
+    });
+    allHistory.sort((a, b) => (a.time || 0) - (b.time || 0));
+
+    // 从后往前找最新一条 user 发的消息
+    const lastUserMsg = [...allHistory].reverse().find(m => m.role === 'user');
+    const alertBox = document.getElementById('p-lock-alert-box');
+    if (lastUserMsg && alertBox) {
+      const cleanTxt = lastUserMsg.content
+        .replace(/\[QUOTE:[\s\S]*?\]\n?/g, '')
+        .replace(/\[表情包:([^\|]+)\|.*\]/g, '[$1]')
+        .replace(/\[LOCAL_IMG:.*?\]/g, '[图片]')
+        .trim();
+      alertBox.style.display = 'flex';
+      document.getElementById('p-lock-sender').textContent = cfg.userName || 'USER';
+      document.getElementById('p-lock-msg').textContent = cleanTxt || '[发送了一条消息]';
+    } else if (phoneData && phoneData.lock && alertBox) {
+      alertBox.style.display = 'flex';
       document.getElementById('p-lock-sender').textContent = phoneData.lock.sender;
       document.getElementById('p-lock-msg').textContent = phoneData.lock.text;
     }
+  }
+
+  function renderPhoneData() {
+    updateLockScreenLatestUserMsg();
+    if (!phoneData) return;
+
     if (phoneData.weather) {
       document.getElementById('p-w-city').textContent = phoneSettings.loc || '当前位置';
       document.getElementById('p-w-temp').textContent = phoneData.weather.temp;
