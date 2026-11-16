@@ -1,7 +1,11 @@
 /* ==========================================
    独立扩展插件：查手机 (Phone Inspection)
    ========================================== */
-#phone-modal-backdrop { z-index: 300; display: flex; align-items: center; justify-content: center; }
+#phone-modal-backdrop { 
+  z-index: 300; display: flex; align-items: center; justify-content: center; 
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px);
+}
+#phone-modal-backdrop.hidden { display: none !important; }
 #phone-wrapper {
   width: 100%; max-width: 380px; height: 80vh; max-height: 780px;
   background: #1a1c20; border-radius: 40px; border: 4px solid #2e3238;

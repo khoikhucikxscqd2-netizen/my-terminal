@@ -117,9 +117,9 @@
           </div>
           <div class="p-detail-content" id="p-dtl-body"></div>
         </div>
-
       </div>
-      <button class="close-btn" style="position:absolute; top:20px; right:20px; font-size:30px; color:#fff;" onclick="document.getElementById('phone-modal-backdrop').classList.add('hidden')">✕</button>
+      <!-- 把关闭按钮挪到 wrapper 外面，免得被手机壳遮挡 -->
+      <button id="close-phone-btn" onclick="document.getElementById('phone-modal-backdrop').classList.add('hidden')">✕</button>
     </div>
   `;
   document.body.insertAdjacentHTML('beforeend', phoneHTML);
