@@ -51,10 +51,11 @@ function chunkText(text, maxLen = 1200) {
 
 function splitChunkToSentences(rawText) {
   const segments = rawText
+    .replace(/\r\n/g, '\n')
     .replace(/([。！？\?\!]+”*)/g, '$1|')
     .replace(/\n+/g, '|\n|')
     .split('|')
-    .filter(s => s.trim().length > 0);
+    .filter(s => s === '\n' || s.trim().length > 0);
   return segments.map((text, idx) => ({ id: idx, text: text }));
 }
 
