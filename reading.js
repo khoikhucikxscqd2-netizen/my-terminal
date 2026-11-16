@@ -198,43 +198,81 @@ function updateReaderHTML() {
 async function requestChunkAnnotation() {
   const cfg = getConfig();
   if (!cfg.apiKey) return alert('未配置 API 秘钥');
+
+  const totalPages = currentBook.chunks.length;
+  const maxAvailable = totalPages - currentChunkIndex;
+
+  // 1. 询问要连续批注几页
+  let pagesInput = prompt(`要从当前第 ${currentChunkIndex + 1} 页开始，连续批注几页？\n(输入 1-${maxAvailable}，默认 1)\n*按次计费用户可输入更大数字一次性搞定*`, "1");
+  if (pagesInput === null) return; // 用户点取消
   
+  let count = parseInt(pagesInput, 10);
+  if (isNaN(count) || count < 1) count = 1;
+  if (count > maxAvailable) count = maxAvailable;
+
+  // 2. 拼接多页文本并计算 Token
+  let combinedText = "";
+  for (let i = 0; i < count; i++) {
+    const pageIdx = currentChunkIndex + i;
+    const sentences = splitChunkToSentences(currentBook.chunks[pageIdx]);
+    combinedText += `\n【第${pageIdx + 1}页】\n` + sentences.map(s => `[${s.id}] ${s.text}`).join('');
+  }
+
+  let estimatedTokens = estimateTokens(combinedText);
+
+  // 3. 弹窗二次确认消耗
+  if (!confirm(`将连续批注 ${count} 页内容。\n预计本次将发给 AI 约 ${estimatedTokens.toLocaleString()} Tokens 的原文阅读量。\n确认呼叫伴读吗？`)) {
+    return;
+  }
+
   const userName = cfg.userName || 'USER';
   const aiName = cfg.aiName || 'AI';
-
   const pingBtn = document.getElementById('reader-ping-btn');
   pingBtn.textContent = '⏳ 终端信号分析中...';
   pingBtn.disabled = true;
 
-  const numberedText = currentSentences.map(s => `[${s.id}] ${s.text}`).join('');
-  const prompt = `你现在是 ${aiName}。${userName} 正在阅读《${currentBook.title}》的第 ${currentChunkIndex + 1} 页。
-请阅读以下带编号的文本。挑选出最让你有共鸣、想吐槽或最吸引你注意力的 3 到 6 个句子，写下你的批注（就像书页上的随笔，完全符合你的人设）。
-严格以纯 JSON 数组格式返回：[{"id": 句子编号数字, "comment": "批注内容"}]
+  const pageRangeStr = count === 1 ? `第 ${currentChunkIndex + 1} 页` : `第 ${currentChunkIndex + 1} 到 ${currentChunkIndex + count} 页`;
 
-【本页正文】
-${numberedText}`;
+  // 4. 重构 Prompt：要求 AI 返回包含 page 页码字段的 JSON
+  const promptText = `你现在是 ${aiName}。${userName} 正在阅读《${currentBook.title}》的 ${pageRangeStr}。
+请阅读以下按【页码】和【句子编号】排版的文本。挑选出最让你有共鸣、想吐槽或最吸引你注意力的句子（每页平均 3-5 条），写下你的批注（就像书页上的随笔，完全符合你的人设）。
+严格以纯 JSON 数组格式返回（注意必须包含 page 字段标明是哪一页）：
+[{"page": 对应页码数字, "id": 句子编号数字, "comment": "批注内容"}]
+
+【阅读正文】
+${combinedText}`;
 
   try {
-    const { messages } = buildContextPayload(prompt);
-    const reply = await callTacticalAPI(messages);
+    const { messages } = buildContextPayload(promptText);
+    const reply = await callTacticalAPI(messages, 'archive'); // 继续使用便宜的档案模型
 
     const jsonMatch = reply.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      if (!currentBook.savedAnnotations[currentChunkIndex]) {
-        currentBook.savedAnnotations[currentChunkIndex] = {};
-      }
+
       parsed.forEach(item => {
+        // 兼容处理：如果 AI 漏写了 page，默认存入当前页
+        let targetPageIdx = item.page ? (item.page - 1) : currentChunkIndex;
+        // 防越界保护
+        if (targetPageIdx >= totalPages) targetPageIdx = totalPages - 1;
+
+        if (!currentBook.savedAnnotations[targetPageIdx]) {
+          currentBook.savedAnnotations[targetPageIdx] = {};
+        }
         if (item.id !== undefined && item.comment) {
-          const existingReplies = currentBook.savedAnnotations[currentChunkIndex][item.id]?.replies || [];
-          currentBook.savedAnnotations[currentChunkIndex][item.id] = { 
-            comment: item.comment, 
-            replies: existingReplies 
+          const existingReplies = currentBook.savedAnnotations[targetPageIdx][item.id]?.replies || [];
+          currentBook.savedAnnotations[targetPageIdx][item.id] = {
+            comment: item.comment,
+            replies: existingReplies
           };
         }
       });
       syncCurrentBookToStorage();
       updateReaderHTML();
+      
+      if (count > 1) {
+        alert(`✓ 成功批量批注了 ${count} 页内容！\n当前页的高亮已显示，继续往后翻页即可直接查看后续批注。`);
+      }
     }
   } catch (err) {
     alert('批注生成失败: ' + err.message);
