@@ -155,22 +155,44 @@
     border-color: rgba(255, 255, 255, 0.5) !important;
   }
   
-  /* 2. 把小手机稍微往上挪一点，左右稍微放宽，给底部按钮留出防误触空间，调整真机比例 */
+  /* 2. 优化平板与手机端的整体比例，保证一屏完整展示，超高则内部滚动 */
   #phone-wrapper {
-    width: 96% !important;
-    height: 82vh !important;
-    margin-bottom: 60px !important;
-    border-width: 2px !important; /* 边框变细，显得屏幕更大 */
-    border-radius: 30px !important;
+    width: 92% !important;
+    max-width: 400px !important;
+    height: 80vh !important;
+    max-height: 700px !important; /* 防止在平板上被拉得太高导致底部被切 */
+    margin-bottom: 50px !important;
+    border-width: 2px !important;
+    border-radius: 28px !important;
   }
   
-  /* 缩小锁屏密码的数字圆圈，防止手机太窄挤压在一起 */
+  /* 锁屏界面特殊适配：缩小字体和间距，确保 0 键稳稳在底部 */
+  #p-lock-screen {
+    padding: 30px 16px 20px !important;
+  }
+  .p-lock-clock {
+    font-size: 52px !important;
+  }
   .p-numpad {
-    width: 230px !important;
-    gap: 8px 16px !important;
+    width: 220px !important;
+    gap: 8px 14px !important;
+    margin-top: 10px !important;
   }
   .p-num-key {
-    width: 56px !important;
-    height: 56px !important;
+    width: 52px !important;
+    height: 52px !important;
+    font-size: 20px !important;
+  }
+  
+  /* 主屏幕微调：缩小组件，防止遮挡桌面 App */
+  .p-widget-weather {
+    padding: 10px !important;
+  }
+  .p-widget-weather .temp {
+    font-size: 22px !important;
+  }
+  .p-widget-memo {
+    padding: 8px 10px !important;
+    margin-top: 8px !important;
   }
 }

@@ -454,7 +454,7 @@
     } else if (appId === 'taobao' && phoneData.taobao) {
       titleEl.textContent = '订单中心 (淘宝/外卖)';
       bodyEl.innerHTML = phoneData.taobao.map(t => `
-        <div class="p-order-card" onclick="pOpenDtl('订单追踪', '<b>${t.shop}</b><br>状态：${t.status}<br>金额：${t.price}<br><br>📝 真实目的/备注：<br>${t.detail}')">
+        <div class="p-order-card" onclick="pOpenDtl('订单追踪', '<b>${t.shop}</b><br>状态：${t.status}<br>金额：${t.price}<br><br>📝 备注：<br>${t.detail}')">
           <div style="display:flex; justify-content:space-between; font-size:12px; color:#888; border-bottom:1px solid #333; padding-bottom:8px; margin-bottom:10px;">
             <span>${t.is_flash ? '⚡ 闪购同城' : '📦 淘宝购物'} - ${t.shop}</span><span style="color:#e0a96d;">${t.status}</span>
           </div>
@@ -471,15 +471,15 @@
     } else if (appId === 'browser' && phoneData.browser) {
       titleEl.textContent = 'Safari 浏览记录';
       bodyEl.innerHTML = phoneData.browser.map(b => `
-        <div style="padding:14px 16px; border-bottom:1px solid #1c1f24; cursor:pointer;" onclick="pOpenDtl('搜索详情', '<b>检索关键词：</b><br>${b.query}<br><br><b>🕵️‍♂️ 真实目的/心声：</b><br>${b.thought}')">
+        <div style="padding:14px 16px; border-bottom:1px solid #1c1f24; cursor:pointer;" onclick="pOpenDtl('搜索详情', '<b>检索关键词：</b><br>${b.query.replace(/'/g, "\\'")}<br><br><b>🕵️‍♂️ 心声：</b><br>${b.thought.replace(/'/g, "\\'")}')">
           <div style="font-size:14px; color:#fff; font-weight:500; margin-bottom:6px;">🔍 ${b.query}</div>
           <div style="font-size:11px; color:#666;">搜索于：${b.time}</div>
         </div>
       `).join('');
     } else if (appId === 'notes' && phoneData.notes) {
-      titleEl.textContent = '行动备忘录';
+      titleEl.textContent = '备忘录';
       bodyEl.innerHTML = phoneData.notes.map(n => `
-        <div style="padding:16px; border-bottom:1px solid #1c1f24; cursor:pointer;" onclick="pOpenDtl('${n.title}', '${n.content.replace(/\\n/g, '<br>')}')">
+        <div style="padding:16px; border-bottom:1px solid #1c1f24; cursor:pointer;" onclick="pOpenDtl('${n.title.replace(/'/g, "\\'")}', '${n.content.replace(/\n/g, '<br>').replace(/'/g, "\\'")}')">
           <div style="font-size:15px; color:#e0a96d; font-weight:bold; margin-bottom:6px;">📌 ${n.title}</div>
           <div style="font-size:11px; color:#666;">更新于：${n.time}</div>
         </div>
