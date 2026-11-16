@@ -155,10 +155,22 @@
     border-color: rgba(255, 255, 255, 0.5) !important;
   }
   
-  /* 2. 把小手机稍微往上挪一点，左右稍微收窄，给底部按钮留出防误触空间 */
+  /* 2. 把小手机稍微往上挪一点，左右稍微放宽，给底部按钮留出防误触空间，调整真机比例 */
   #phone-wrapper {
-    width: 92% !important;
-    height: 76vh !important;
+    width: 96% !important;
+    height: 82vh !important;
     margin-bottom: 60px !important;
+    border-width: 2px !important; /* 边框变细，显得屏幕更大 */
+    border-radius: 30px !important;
+  }
+  
+  /* 缩小锁屏密码的数字圆圈，防止手机太窄挤压在一起 */
+  .p-numpad {
+    width: 230px !important;
+    gap: 8px 16px !important;
+  }
+  .p-num-key {
+    width: 56px !important;
+    height: 56px !important;
   }
 }
