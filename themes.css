@@ -400,3 +400,218 @@ body[data-theme="cloud-puppy"] {
   background: #ffffff;
   border-top: 2px solid #7ab8f0;
 }
+/* ==========================================
+   皮肤 3：企业ERP后台 (enterprise-erp)
+   经典蓝白政务/外贸物流ERP风 · 极简方正表格 · 顶级摸鱼伪装
+   ========================================== */
+[data-theme="enterprise-erp"] {
+  --bg-main: #f0f2f5;           /* 经典ERP浅灰办公底色 */
+  --bg-panel: #ffffff;          /* 纯白数据表格面板 */
+  --bg-input: #ffffff;          /* 纯白查询输入框 */
+  --text-main: #262626;         /* 商务深黑正文字 */
+  --text-muted: #8c8c8c;        /* 辅助灰字 */
+  --accent-amber: #1890ff;      /* 经典AntD/ERP科技蓝主色 */
+  --accent-green: #00cc00;      /* 标志性“审批通过”草绿 */
+  --accent-red: #f5222d;        /* 警示红 */
+  --border-dim: #e8e8e8;        /* 表格细分割线 */
+  --border-bright: #91d5ff;     /* 浅蓝边框线 */
+}
+
+/* 1. 纯净浅灰办公底色，去掉所有点阵与扫描线 */
+body[data-theme="enterprise-erp"] {
+  background-color: #f0f2f5;
+  background-image: none;
+  color: #262626;
+  font-family: "Microsoft YaHei", "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* 2. 顶部导航栏：仿多标签页(Tabs)企业后台顶栏 */
+[data-theme="enterprise-erp"] .top-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #d9d9d9;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.06);
+  height: 40px;
+}
+
+[data-theme="enterprise-erp"] .terminal-brand {
+  color: #1890ff;
+  font-family: "Microsoft YaHei", sans-serif;
+  font-size: 13px;
+}
+
+/* 把顶栏标题伪装成当前打开的ERP标签页 */
+[data-theme="enterprise-erp"] .brand-title {
+  background: #e6f7ff;
+  border: 1px solid #91d5ff;
+  border-bottom: none;
+  padding: 5px 12px;
+  border-radius: 3px 3px 0 0;
+  color: #1890ff;
+  font-weight: 600;
+}
+[data-theme="enterprise-erp"] .brand-title::after {
+  content: "  ×";
+  color: #8c8c8c;
+  font-weight: normal;
+  margin-left: 6px;
+}
+
+/* 3. 主面板：直角纯白业务卡片 + 浅蓝面包屑表头 */
+[data-theme="enterprise-erp"] .tac-panel,
+[data-theme="enterprise-erp"] .tac-modal {
+  background: #ffffff;
+  border: 1px solid #e8e8e8;
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+[data-theme="enterprise-erp"] .tac-panel::before,
+[data-theme="enterprise-erp"] .tac-panel::after {
+  display: none;
+}
+
+[data-theme="enterprise-erp"] .panel-header {
+  background: #fafafa;
+  border-bottom: 1px solid #e8e8e8;
+  height: 36px;
+  padding: 0 12px;
+}
+
+/* 仿图里那个绿底黑字的“托单审批通过”高亮状态标签 */
+[data-theme="enterprise-erp"] .panel-tag {
+  background: #00cc00;
+  color: #000000;
+  font-family: "Microsoft YaHei", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+[data-theme="enterprise-erp"] .panel-header h2 {
+  color: #262626;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* 4. 按钮：1:1 复刻图里的白底蓝框细边ERP功能按钮 & 实心蓝查询按钮 */
+[data-theme="enterprise-erp"] .tac-btn,
+[data-theme="enterprise-erp"] .icon-btn,
+[data-theme="enterprise-erp"] .mini-btn,
+[data-theme="enterprise-erp"] .mood-chip {
+  background: #ffffff;
+  border: 1px solid #91d5ff;
+  border-radius: 2px;
+  color: #1890ff;
+  font-family: "Microsoft YaHei", sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  box-shadow: none;
+}
+
+[data-theme="enterprise-erp"] .tac-btn:hover,
+[data-theme="enterprise-erp"] .icon-btn:hover,
+[data-theme="enterprise-erp"] .mini-btn:hover,
+[data-theme="enterprise-erp"] .mood-chip:hover {
+  background: #e6f7ff;
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+/* 主按钮：图里右上角那个实心蓝“查询”按钮 */
+[data-theme="enterprise-erp"] .tac-btn.primary,
+[data-theme="enterprise-erp"] .mood-chip.active {
+  background: #1890ff;
+  border-color: #1890ff;
+  color: #ffffff;
+  font-weight: 500;
+}
+[data-theme="enterprise-erp"] .tac-btn.primary:hover {
+  background: #40a9ff;
+  border-color: #40a9ff;
+  color: #ffffff;
+}
+
+/* 5. 聊天气泡：低调工单明细风（白底灰框 vs 极浅天蓝单据色） */
+[data-theme="enterprise-erp"] .chat-messages {
+  background: #ffffff;
+}
+
+[data-theme="enterprise-erp"] .sys-msg {
+  background: #e6f7ff;
+  border: 1px solid #91d5ff;
+  border-left: 3px solid #1890ff;
+  color: #262626;
+  font-family: "Microsoft YaHei", sans-serif;
+}
+
+[data-theme="enterprise-erp"] .msg-ai {
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-left: 3px solid #1890ff;
+  border-radius: 2px;
+  color: #262626;
+  font-size: 13px;
+}
+
+[data-theme="enterprise-erp"] .msg-user {
+  background: #e6f7ff;
+  border: 1px solid #bae7ff;
+  border-right: 3px solid #1890ff;
+  border-radius: 2px;
+  color: #262626;
+  font-size: 13px;
+}
+
+/* 头像缩小并方正化，降低存在感像工号牌 */
+[data-theme="enterprise-erp"] .chat-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 2px;
+  border: 1px solid #d9d9d9;
+  box-shadow: none;
+}
+
+/* 6. 输入框、列表卡片：纯正Ant Design表格行视觉 */
+[data-theme="enterprise-erp"] input,
+[data-theme="enterprise-erp"] textarea,
+[data-theme="enterprise-erp"] select {
+  background: #ffffff !important;
+  color: #262626 !important;
+  border: 1px solid #d9d9d9 !important;
+  border-radius: 2px !important;
+}
+[data-theme="enterprise-erp"] input:focus,
+[data-theme="enterprise-erp"] textarea:focus {
+  border-color: #1890ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15) !important;
+}
+
+[data-theme="enterprise-erp"] .book-card,
+[data-theme="enterprise-erp"] .diary-entry-card,
+[data-theme="enterprise-erp"] .mood-line,
+[data-theme="enterprise-erp"] .task-item {
+  background: #ffffff;
+  border: 1px solid #e8e8e8;
+  border-left: 3px solid #1890ff;
+  border-radius: 2px;
+}
+[data-theme="enterprise-erp"] .diary-entry-card:hover,
+[data-theme="enterprise-erp"] .book-card:hover {
+  background: #e6f7ff;
+}
+
+/* 像素画小屏幕商务蓝适配 */
+[data-theme="enterprise-erp"] .tac-pixel-screen {
+  background: #f0f5ff;
+  border-color: #91d5ff;
+  border-radius: 2px;
+  box-shadow: none;
+}
+[data-theme="enterprise-erp"] .mini-px {
+  background: rgba(24, 144, 255, 0.12);
+}
+[data-theme="enterprise-erp"] .mini-px.on {
+  background: #1890ff;
+  box-shadow: none;
+}
