@@ -1547,6 +1547,7 @@ input:focus, textarea:focus, select:focus {
 .chat-drawer.hidden {
   transform: translateX(-100%);
   pointer-events: none;
+  box-shadow: none !important;
 }
 
 [data-theme="forest-cottage"] .chat-drawer,
