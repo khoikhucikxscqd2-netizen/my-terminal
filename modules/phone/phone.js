@@ -265,7 +265,8 @@
             <p style="color:#aaa; font-size:12px; margin-bottom:6px;">强制锚定所在地 (为空则AI推断)</p>
             <input type="text" id="p-set-loc" placeholder="如：纽约 / 南京" value="${phoneSettings.loc}" style="width:100%; padding:8px; background:#111215; border:1px solid #333; color:#fff; border-radius:6px;">
           </div>
-          <button style="width:100%; padding:10px; background:#1890ff; border:none; color:#fff; border-radius:8px; cursor:pointer; margin-bottom:16px;" onclick="pSaveSettings()">💾 保存密码与地点</button>
+          <button style="width:100%; padding:10px; background:#1890ff; border:none; color:#fff; border-radius:8px; cursor:pointer; margin-bottom:10px;" onclick="pSaveSettings()">💾 保存密码与地点</button>
+          <button style="width:100%; padding:8px; background:transparent; border:1px dashed #ff5252; color:#ff5252; border-radius:8px; cursor:pointer; margin-bottom:16px; font-size:12px;" onclick="pResetPhoneCache()">🗑️ 清空手机记录 (保留相册与设置)</button>
           
           <div style="background:#22252a; padding:14px; border-radius:12px;">
             <p style="color:#e0a96d; font-size:12px; font-weight:bold; margin-bottom:8px;">🕰️ 历史快照（收藏的快照不会被顶替）</p>
@@ -299,6 +300,17 @@
     phoneSettings.loc = newLoc;
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(phoneSettings));
     alert('✓ 设置已保存');
+  };
+
+  // 新增：手动清空手机动态缓存（不影响密码、地址和相册）
+  window.pResetPhoneCache = function() {
+    if (confirm('确定要清空这台手机的所有生成记录吗？\n（密码、所在地和相册会保留，微信、淘宝等数据将被清空，需重新抓取）')) {
+      phoneData = null;
+      localStorage.removeItem(CACHE_KEY);
+      pCloseApp('generic');
+      updateLockScreenLatestUserMsg();
+      alert('✓ 手机已重置为空白状态，请点击主屏【↻ 刷新】重新抓取。');
+    }
   };
 
   // --- API 增量抓取与快照备份 ---
@@ -386,8 +398,10 @@
 当前现实时间是：${nowTimeStr}。
 请严格按照你（${cfg.aiName}）的人设、所在城市（${phoneSettings.loc || '根据人设推断'}）生成你手机里【最新发生】的增量动态。
 
-⚠️ 【最高警告】：在生成 ${cfg.userName} 的微信聊天记录时，必须且只能【一字不差地复制】底部提供的真实聊天记录，严禁自行添加任何没发生过的对话内容！！
-生成其他联系人的对话或备忘录、订单时，请根据当前时间和天气，附上合理的具体时间（如“14:30”或“昨天 23:10”）。
+⚠️ 【最高警告与时间线铁律】：
+1. 提取真实对话：在生成 ${cfg.userName} 的微信聊天记录时，必须且只能【一字不差地提取】底部提供的真实聊天记录，严禁自行脑补任何没发生过的对话内容！！
+2. 时间不可倒流：AI 最容易犯时间倒流的错误。你必须保证所有数组（如微信 msgs、淘宝、备忘录等）的时间线绝对符合【从过去到现在】的流逝逻辑！对话数组第一条时间最早，最后一条时间最晚！
+3. 时间范围：所有生成事件的时间必须小于或等于当前现实时间 ${nowTimeStr}。
 
 必须输出【纯JSON格式】，绝对不要包裹在 \`\`\`json 中，直接输出 { 开始。
 数据结构要求：
