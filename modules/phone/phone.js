@@ -240,8 +240,16 @@
         ? '<p style="color:#666; font-size:12px;">暂无历史快照（每次点击主屏刷新时会自动备份旧数据）</p>'
         : snaps.map((s, i) => `
           <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #333;">
-            <span style="font-size:12px; color:#ddd;">📌 ${s.time}</span>
-            <button style="padding:4px 10px; background:#2b323b; border:1px solid #1890ff; color:#1890ff; border-radius:4px; font-size:11px; cursor:pointer;" onclick="pLoadSnapshot(${i})">切换查看</button>
+            <div style="display:flex; flex-direction:column; gap:2px;">
+              <span style="font-size:12px; color:#ddd; font-weight:${s.starred ? 'bold' : 'normal'};">📌 ${s.time}</span>
+              ${s.starred ? '<span style="font-size:10px; color:#e0a96d;">★ 已永久收藏</span>' : ''}
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button style="padding:4px 8px; background:transparent; border:1px solid ${s.starred ? '#e0a96d' : '#555'}; color:${s.starred ? '#e0a96d' : '#888'}; border-radius:4px; font-size:11px; cursor:pointer;" onclick="pToggleStarSnapshot(${i})">
+                ${s.starred ? '★ 取消' : '☆ 收藏'}
+              </button>
+              <button style="padding:4px 10px; background:#2b323b; border:1px solid #1890ff; color:#1890ff; border-radius:4px; font-size:11px; cursor:pointer;" onclick="pLoadSnapshot(${i})">查看</button>
+            </div>
           </div>
         `).join('');
 
@@ -260,7 +268,7 @@
           <button style="width:100%; padding:10px; background:#1890ff; border:none; color:#fff; border-radius:8px; cursor:pointer; margin-bottom:16px;" onclick="pSaveSettings()">💾 保存密码与地点</button>
           
           <div style="background:#22252a; padding:14px; border-radius:12px;">
-            <p style="color:#e0a96d; font-size:12px; font-weight:bold; margin-bottom:8px;">🕰️ 历史时间快照 (保留最近5份)</p>
+            <p style="color:#e0a96d; font-size:12px; font-weight:bold; margin-bottom:8px;">🕰️ 历史快照（收藏的快照不会被顶替）</p>
             ${snapListHTML}
           </div>
         </div>
@@ -273,6 +281,15 @@
     }
   };
   window.pCloseApp = function(id) { document.getElementById('p-app-' + id).classList.remove('active'); };
+
+  // 新增：切换快照收藏状态
+  window.pToggleStarSnapshot = function(idx) {
+    const snaps = JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || '[]');
+    if (!snaps[idx]) return;
+    snaps[idx].starred = !snaps[idx].starred;
+    localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snaps));
+    pOpenApp('settings'); // 刷新设置界面
+  };
 
   window.pSaveSettings = function() {
     const newPin = document.getElementById('p-set-pin').value.trim();
@@ -346,20 +363,32 @@
       allHistory = allHistory.concat(JSON.parse(localStorage.getItem(key) || '[]'));
     });
     allHistory.sort((a, b) => (a.time || 0) - (b.time || 0));
-    const recentChat = allHistory.slice(-50).map(m => `${m.role === 'user' ? cfg.userName : cfg.aiName}: ${m.content.replace(/\[.*?\]/g, '')}`).join('\n');
+    
+    // 只给 AI 喂真实的聊天记录，用于它严格复述
+    const recentChat = allHistory.slice(-50).map(m => {
+      const d = new Date(m.time || Date.now());
+      const timeTag = `[${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}]`;
+      return `${timeTag} ${m.role === 'user' ? cfg.userName : cfg.aiName}: ${m.content.replace(/\[.*?\]/g, '')}`;
+    }).join('\n');
 
     let memoryContext = '';
     if (typeof getInjectableMemories === 'function') memoryContext = getInjectableMemories();
     const pool = JSON.parse(localStorage.getItem(STORAGE_KEYS.MEMORY_POOL) || '{"diaries":[],"mood":""}');
 
-    // 提取已有联系人名单，告诉 AI 优先在这些对话框里续写新消息
     const existingContacts = (phoneData && phoneData.wechat && phoneData.wechat.chats)
       ? phoneData.wechat.chats.map(c => `${c.name}(${c.role})`).join('、')
       : '暂无';
+      
+    const now = new Date();
+    const nowTimeStr = `${now.getMonth()+1}月${now.getDate()}日 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
     const prompt = `[系统指令：续写角色手机最新动态]
-请严格按照你（${cfg.aiName}）的人设、所在城市（${phoneSettings.loc || '根据人设推断'}）以及下方的[近期记忆与聊天上下文]，生成你手机里【最新发生】的增量动态。
-【已有微信联系人】：${existingContacts}（请在输出微信对话时，优先沿用这些老联系人的名字续写新发生的对话，如剧情需要也可新增1位联系人）。
+当前现实时间是：${nowTimeStr}。
+请严格按照你（${cfg.aiName}）的人设、所在城市（${phoneSettings.loc || '根据人设推断'}）生成你手机里【最新发生】的增量动态。
+
+⚠️ 【最高警告】：在生成 ${cfg.userName} 的微信聊天记录时，必须且只能【一字不差地复制】底部提供的真实聊天记录，严禁自行添加任何没发生过的对话内容！！
+生成其他联系人的对话或备忘录、订单时，请根据当前时间和天气，附上合理的具体时间（如“14:30”或“昨天 23:10”）。
+
 必须输出【纯JSON格式】，绝对不要包裹在 \`\`\`json 中，直接输出 { 开始。
 数据结构要求：
 {
@@ -369,31 +398,30 @@
   "wechat": {
     "chats": [
       {
-        "name": "联系人1(必须是${cfg.userName})", "avatar": "👩🏻‍🦰", "role": "老婆/备注",
-        "msgs": [{"me":false,"text":"新对话1"},{"me":true,"text":"新回复2"}...] // 6-8条最新续写对话
-      } // 再生成2-3个联系人(沿用老熟人或新角色)，每个含4-6条最新续写对话
+        "name": "${cfg.userName}", "avatar": "👩🏻‍🦰", "role": "老婆/备注",
+        "msgs": [{"me":false,"time":"12:30","text":"（绝对摘抄自下方的真实记录）"},{"me":true,"time":"12:35","text":"（绝对摘抄自下方）"}...] 
+      } // 其他2-3个联系人(沿用名单：${existingContacts})，每个含4-6条最新续写对话，并附带time
     ],
     "moments": [
-      {"author":"${cfg.userName}或其他人","avatar":"👩🏻‍🦰","time":"刚刚","content":"最新动态正文","img_desc":"[图片：描述画面]","actions":"你的点赞或评论"} // 1-2条新动态
+      {"author":"${cfg.userName}或其他人","avatar":"👩🏻‍🦰","time":"刚刚","content":"最新动态正文","img_desc":"[图片：描述画面]","actions":"你的点赞或评论"}
     ],
     "me": {"sign":"你的微信签名","balance":"$ 12,450.00","favs":["新收藏1","新收藏2"]}
   },
   "xhs": [
-    {"title":"新刷到的笔记标题","author":"博主名","likes":"1.2w","emoji":"🎮","cover_text":"封面大字","content":"笔记正文或你的心声"} // 2-4条新笔记
+    {"title":"新刷到的笔记标题","author":"博主名","likes":"1.2w","emoji":"🎮","cover_text":"封面大字","content":"笔记正文或心声"}
   ],
   "taobao": [
-    {"shop":"店铺名","status":"派送中","name":"新购商品名","spec":"规格","price":"$12","emoji":"📦","is_flash":false,"detail":"订单真实目的备注"} // 1-2条实物，1-2条外卖闪购(is_flash:true)
+    {"shop":"店铺名","time":"12:30","status":"派送中","name":"新购商品名","spec":"规格","price":"$12","emoji":"📦","is_flash":false,"detail":"真实目的备注"}
   ],
   "browser": [
-    {"query":"新搜索关键词","time":"刚刚","thought":"你搜这个的真实目的/心声"} // 2-4条新搜索
+    {"query":"新搜索关键词","time":"刚刚","thought":"你搜这个的真实目的/心声"}
   ],
   "notes": [
-    {"title":"新备忘录标题","time":"刚刚","content":"详细正文内容..."} // 1-2条新备忘
+    {"title":"新备忘录标题","time":"10:00","content":"详细正文内容..."}
   ]
 }
-【长期记忆】\n${memoryContext}
 【近期状态】\n${pool.mood}
-【最近50条聊天】\n${recentChat}`;
+【最近50条真实聊天记录（用于直接提取，严禁瞎编）】\n${recentChat}`;
 
     try {
       const reply = await callTacticalAPI([
@@ -406,13 +434,16 @@
       
       const newParsed = JSON.parse(jsonMatch[0]);
 
-      // 1. 刷新前先把旧数据存成历史快照（最多保留最近5份）
+      // 1. 刷新前把旧数据存成历史快照，但跳过已经标星收藏的，确保最多只有5份非收藏快照
       if (phoneData) {
         const snaps = JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || '[]');
-        const now = new Date();
         const stamp = `${now.getMonth()+1}月${now.getDate()}日 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-        snaps.unshift({ time: stamp, data: phoneData });
-        localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snaps.slice(0, 5)));
+        snaps.unshift({ time: stamp, data: phoneData, starred: false });
+        
+        // 过滤保留逻辑：所有标星的无条件保留，没标星的只留最新的前 5 个
+        const starredSnaps = snaps.filter(s => s.starred);
+        const unstarredSnaps = snaps.filter(s => !s.starred).slice(0, 5);
+        localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify([...starredSnaps, ...unstarredSnaps]));
       }
 
       // 2. 合并新旧数据并保存
@@ -421,7 +452,7 @@
       isViewingSnapshot = false;
       updateSnapshotUIState();
       renderPhoneData();
-      alert('✓ 新动态已续写进手机，旧记录已保留并备份快照！');
+      alert('✓ 新动态已同步！旧记录已自动备份。');
     } catch (err) {
       alert('✕ 抓取失败: ' + err.message);
     } finally {
@@ -536,9 +567,11 @@
     }
   };
 
+  // 微信气泡渲染（带时间戳）
   window.pOpenChatDetail = function(idx) {
     const chat = phoneData.wechat.chats[idx];
     const logHTML = chat.msgs.map(m => `
+      <div style="text-align:center; font-size:10px; color:#555; margin-bottom:4px;">${m.time || ''}</div>
       <div class="p-msg-row ${m.me ? 'me' : ''}">
         ${!m.me ? `<div class="p-wc-avatar" style="width:36px;height:36px;font-size:18px;">${chat.avatar}</div>` : ''}
         <div class="p-bubble">${m.text}</div>
@@ -547,7 +580,7 @@
     pOpenDtl(chat.name, `<div class="p-chat-log">${logHTML}</div>`, true);
   };
 
-  // --- 其他 App 渲染逻辑 ---
+  // 其他 App 渲染（加入外卖时间标签）
   function renderGenericApp(appId) {
     document.getElementById('p-app-generic').classList.add('active');
     const titleEl = document.getElementById('p-gen-title');
@@ -557,7 +590,7 @@
     if (appId === 'xhs' && phoneData.xhs) {
       titleEl.textContent = '小红书';
       bodyEl.innerHTML = `<div class="p-xhs-grid">` + phoneData.xhs.map(x => `
-        <div class="p-xhs-card" onclick="pOpenDtl('笔记详情', '<h3 style=\\'color:#fff;margin-bottom:10px;\\'>${x.title}</h3><p style=\\'color:#aaa;\\'>${x.content}</p>')">
+        <div class="p-xhs-card" onclick="pOpenDtl('笔记详情', '<h3 style=\\'color:#fff;margin-bottom:10px;\\'>${x.title.replace(/'/g, "\\'")}</h3><p style=\\'color:#aaa;\\'>${x.content.replace(/\n/g, '<br>').replace(/'/g, "\\'")}</p>')">
           <div class="p-xhs-cover"><span>${x.emoji}</span><div style="font-size:11px;color:#888;margin-top:4px;">${x.cover_text}</div></div>
           <div style="padding:10px;">
             <div style="font-size:12px; color:#fff; font-weight:bold; margin-bottom:6px; height:32px; overflow:hidden;">${x.title}</div>
@@ -568,15 +601,15 @@
     } else if (appId === 'taobao' && phoneData.taobao) {
       titleEl.textContent = '订单中心 (淘宝/外卖)';
       bodyEl.innerHTML = phoneData.taobao.map(t => `
-        <div class="p-order-card" onclick="pOpenDtl('订单追踪', '<b>${t.shop}</b><br>状态：${t.status}<br>金额：${t.price}<br><br>📝 备注：<br>${t.detail}')">
+        <div class="p-order-card" onclick="pOpenDtl('订单追踪', '<b>${t.shop.replace(/'/g, "\\'")}</b><br>状态：${t.status}<br>金额：${t.price}<br><br>📝 备注：<br>${t.detail.replace(/\n/g, '<br>').replace(/'/g, "\\'")}')">
           <div style="display:flex; justify-content:space-between; font-size:12px; color:#888; border-bottom:1px solid #333; padding-bottom:8px; margin-bottom:10px;">
-            <span>${t.is_flash ? '⚡ 闪购同城' : '📦 淘宝购物'} - ${t.shop}</span><span style="color:#e0a96d;">${t.status}</span>
+            <span>${t.is_flash ? '⚡ 同城急送' : '📦 淘宝购物'} - ${t.shop}</span><span style="color:#e0a96d;">${t.status}</span>
           </div>
           <div style="display:flex; gap:12px;">
             <div style="width:48px;height:48px;background:#2a2e35;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">${t.emoji}</div>
             <div>
               <div style="font-size:14px; color:#fff; font-weight:500; margin-bottom:4px;">${t.name}</div>
-              <div style="font-size:12px; color:#888;">${t.spec}</div>
+              <div style="font-size:11px; color:#888;">${t.time ? `下单时间：${t.time}<br>` : ''}${t.spec}</div>
             </div>
             <div style="margin-left:auto; font-size:14px; font-weight:bold; color:#1890ff;">${t.price}</div>
           </div>
@@ -591,11 +624,11 @@
         </div>
       `).join('');
     } else if (appId === 'notes' && phoneData.notes) {
-      titleEl.textContent = '备忘录';
+      titleEl.textContent = '行动备忘录';
       bodyEl.innerHTML = phoneData.notes.map(n => `
         <div style="padding:16px; border-bottom:1px solid #1c1f24; cursor:pointer;" onclick="pOpenDtl('${n.title.replace(/'/g, "\\'")}', '${n.content.replace(/\n/g, '<br>').replace(/'/g, "\\'")}')">
           <div style="font-size:15px; color:#e0a96d; font-weight:bold; margin-bottom:6px;">📌 ${n.title}</div>
-          <div style="font-size:11px; color:#666;">更新于：${n.time}</div>
+          <div style="font-size:11px; color:#666;">记录于：${n.time}</div>
         </div>
       `).join('');
     }
