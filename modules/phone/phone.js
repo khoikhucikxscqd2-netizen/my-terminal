@@ -50,7 +50,11 @@
         <div id="p-home-screen" class="p-screen">
           <div class="p-status-bar" style="padding-top:12px;">
             <span id="p-home-time">22:45</span>
-            <div class="icons"><span>5G</span><span style="margin-left: 8px; cursor: pointer; color: #1890ff;" id="p-refresh-btn" title="强制刷新抓取最新记忆">↻ 刷新</span></div>
+            <div class="icons">
+              <span id="p-return-latest-btn" style="display:none; margin-right:8px; cursor:pointer; color:#ff7875; font-weight:bold;" onclick="pRestoreLatest()">🔙 返回最新</span>
+              <span>5G</span>
+              <span style="margin-left: 8px; cursor: pointer; color: #1890ff;" id="p-refresh-btn" title="强制刷新抓取最新记忆">↻ 刷新</span>
+            </div>
           </div>
           <div style="padding: 0 10px;">
             <div class="p-widget-weather">
@@ -138,6 +142,10 @@
   }
 
   // --- UI 控制逻辑 ---
+  const SNAPSHOTS_KEY = 'ezekiel_phone_snapshots';
+  let isViewingSnapshot = false;
+
+  // --- UI 控制逻辑 ---
   function openPhone() {
     document.getElementById('phone-modal-backdrop').classList.remove('hidden');
     document.getElementById('p-lock-screen').style.display = 'flex';
@@ -146,6 +154,9 @@
     updateClockAndWallpaper();
     updateLockScreenLatestUserMsg();
     
+    isViewingSnapshot = false;
+    updateSnapshotUIState();
+
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
       phoneData = JSON.parse(cached);
@@ -155,6 +166,36 @@
     }
   }
 
+  function updateSnapshotUIState() {
+    const retBtn = document.getElementById('p-return-latest-btn');
+    const refBtn = document.getElementById('p-refresh-btn');
+    if (retBtn) retBtn.style.display = isViewingSnapshot ? 'inline' : 'none';
+    if (refBtn) refBtn.style.display = isViewingSnapshot ? 'none' : 'inline';
+  }
+
+  window.pRestoreLatest = function() {
+    isViewingSnapshot = false;
+    updateSnapshotUIState();
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      phoneData = JSON.parse(cached);
+      renderPhoneData();
+    }
+    pCloseApp('generic');
+    alert('✓ 已切回当前最新手机状态！');
+  };
+
+  window.pLoadSnapshot = function(idx) {
+    const snaps = JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || '[]');
+    if (!snaps[idx]) return;
+    isViewingSnapshot = true;
+    updateSnapshotUIState();
+    phoneData = snaps[idx].data;
+    renderPhoneData();
+    pCloseApp('generic');
+    alert(`🕰️ 已切换至历史快照（${snaps[idx].time}），可随时点击右上角「🔙 返回最新」恢复。`);
+  };
+
   function updateClockAndWallpaper() {
     const now = new Date();
     const tStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
@@ -163,7 +204,6 @@
     document.getElementById('p-home-time').textContent = tStr;
     document.getElementById('p-lock-date').textContent = dStr;
 
-    // 随机壁纸
     const photos = JSON.parse(localStorage.getItem(PHOTOS_KEY) || '[]');
     const bgUrl = photos.length > 0 ? `url(${photos[Math.floor(Math.random() * photos.length)].base64})` : 'none';
     document.getElementById('p-lock-screen').style.backgroundImage = bgUrl;
@@ -195,18 +235,34 @@
       document.getElementById('p-app-wechat').classList.add('active');
       pRenderWc('chats');
     } else if (appId === 'settings') {
+      const snaps = JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || '[]');
+      const snapListHTML = snaps.length === 0 
+        ? '<p style="color:#666; font-size:12px;">暂无历史快照（每次点击主屏刷新时会自动备份旧数据）</p>'
+        : snaps.map((s, i) => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #333;">
+            <span style="font-size:12px; color:#ddd;">📌 ${s.time}</span>
+            <button style="padding:4px 10px; background:#2b323b; border:1px solid #1890ff; color:#1890ff; border-radius:4px; font-size:11px; cursor:pointer;" onclick="pLoadSnapshot(${i})">切换查看</button>
+          </div>
+        `).join('');
+
       document.getElementById('p-gen-title').textContent = '系统设置';
       document.getElementById('p-gen-body').innerHTML = `
         <div style="padding:16px;">
-          <div style="background:#22252a; padding:16px; border-radius:12px; margin-bottom:16px;">
-            <p style="color:#aaa; font-size:12px; margin-bottom:8px;">修改锁屏密码 (当前: ${phoneSettings.pin})</p>
-            <input type="text" id="p-set-pin" maxlength="4" placeholder="输入4位数字" style="width:100%; padding:10px; background:#111215; border:1px solid #333; color:#fff; border-radius:6px;">
+          ${isViewingSnapshot ? `<button style="width:100%; padding:10px; background:#ff5252; border:none; color:#fff; border-radius:8px; margin-bottom:16px; font-weight:bold; cursor:pointer;" onclick="pRestoreLatest()">🔙 当前正在查看旧快照，点击切回最新</button>` : ''}
+          <div style="background:#22252a; padding:14px; border-radius:12px; margin-bottom:14px;">
+            <p style="color:#aaa; font-size:12px; margin-bottom:6px;">修改锁屏密码 (当前: ${phoneSettings.pin})</p>
+            <input type="text" id="p-set-pin" maxlength="4" placeholder="输入4位数字" style="width:100%; padding:8px; background:#111215; border:1px solid #333; color:#fff; border-radius:6px;">
           </div>
-          <div style="background:#22252a; padding:16px; border-radius:12px; margin-bottom:16px;">
-            <p style="color:#aaa; font-size:12px; margin-bottom:8px;">强制锚定所在地 (为空则AI推断)</p>
-            <input type="text" id="p-set-loc" placeholder="如：纽约 / 上海" value="${phoneSettings.loc}" style="width:100%; padding:10px; background:#111215; border:1px solid #333; color:#fff; border-radius:6px;">
+          <div style="background:#22252a; padding:14px; border-radius:12px; margin-bottom:14px;">
+            <p style="color:#aaa; font-size:12px; margin-bottom:6px;">强制锚定所在地 (为空则AI推断)</p>
+            <input type="text" id="p-set-loc" placeholder="如：纽约 / 南京" value="${phoneSettings.loc}" style="width:100%; padding:8px; background:#111215; border:1px solid #333; color:#fff; border-radius:6px;">
           </div>
-          <button style="width:100%; padding:12px; background:#1890ff; border:none; color:#fff; border-radius:8px; cursor:pointer;" onclick="pSaveSettings()">💾 保存设置</button>
+          <button style="width:100%; padding:10px; background:#1890ff; border:none; color:#fff; border-radius:8px; cursor:pointer; margin-bottom:16px;" onclick="pSaveSettings()">💾 保存密码与地点</button>
+          
+          <div style="background:#22252a; padding:14px; border-radius:12px;">
+            <p style="color:#e0a96d; font-size:12px; font-weight:bold; margin-bottom:8px;">🕰️ 历史时间快照 (保留最近5份)</p>
+            ${snapListHTML}
+          </div>
         </div>
       `;
       document.getElementById('p-app-generic').classList.add('active');
@@ -228,22 +284,61 @@
     alert('✓ 设置已保存');
   };
 
-  // --- API 数据请求与渲染 ---
+  // --- API 增量抓取与快照备份 ---
   document.getElementById('p-refresh-btn').addEventListener('click', () => {
-    if (confirm('即将消耗 Token 根据最新全频道记录更新手机数据，是否继续？')) {
+    if (confirm('即将消耗 Token 续写最新手机动态（旧记录会自动保留并备份快照），是否继续？')) {
       fetchPhoneData();
     }
   });
+
+  // 智能合并新旧手机数据（有限度增量保留）
+  function mergePhoneData(oldD, newD) {
+    if (!oldD) return newD;
+    const merged = { ...newD };
+
+    // 1. 微信联系人聊天记录：老联系人续写新气泡（上限30条），新联系人追加
+    if (oldD.wechat && newD.wechat && Array.isArray(oldD.wechat.chats) && Array.isArray(newD.wechat.chats)) {
+      const chatMap = new Map();
+      oldD.wechat.chats.forEach(c => chatMap.set(c.name, { ...c, msgs: [...(c.msgs || [])] }));
+      
+      newD.wechat.chats.forEach(nc => {
+        if (chatMap.has(nc.name)) {
+          const existing = chatMap.get(nc.name);
+          existing.msgs = existing.msgs.concat(nc.msgs || []).slice(-30); // 每个对话最多留30条
+          if (nc.role) existing.role = nc.role;
+        } else {
+          chatMap.set(nc.name, nc);
+        }
+      });
+      // 最多保留8个联系人，把刚有新消息的排在前面
+      const updatedNames = new Set(newD.wechat.chats.map(c => c.name));
+      const allChats = Array.from(chatMap.values());
+      const activeChats = allChats.filter(c => updatedNames.has(c.name));
+      const olderChats = allChats.filter(c => !updatedNames.has(c.name));
+      merged.wechat.chats = [...activeChats, ...olderChats].slice(0, 8);
+    }
+
+    // 2. 朋友圈、小红书、淘宝、浏览器、备忘录：新生成的插在最前面，旧的往下排（各上限15条）
+    const prependLimit = (newArr, oldArr, max = 15) => [...(newArr || []), ...(oldArr || [])].slice(0, max);
+    if (oldD.wechat && merged.wechat) {
+      merged.wechat.moments = prependLimit(newD.wechat.moments, oldD.wechat.moments, 12);
+    }
+    merged.xhs = prependLimit(newD.xhs, oldD.xhs, 16);
+    merged.taobao = prependLimit(newD.taobao, oldD.taobao, 15);
+    merged.browser = prependLimit(newD.browser, oldD.browser, 15);
+    merged.notes = prependLimit(newD.notes, oldD.notes, 12);
+
+    return merged;
+  }
 
   async function fetchPhoneData() {
     const cfg = getConfig();
     if (!cfg.apiKey || typeof callTacticalAPI !== 'function') return alert('请先配置终端 API 秘钥！');
     
     const refreshBtn = document.getElementById('p-refresh-btn');
-    refreshBtn.textContent = '⏳ 抓取中...';
+    refreshBtn.textContent = '⏳ 续写中...';
     refreshBtn.style.pointerEvents = 'none';
 
-    // 组装上下文
     let allHistory = [];
     const sessions = typeof getSessions === 'function' ? getSessions() : [{ id: 'default' }];
     sessions.forEach(s => {
@@ -257,56 +352,76 @@
     if (typeof getInjectableMemories === 'function') memoryContext = getInjectableMemories();
     const pool = JSON.parse(localStorage.getItem(STORAGE_KEYS.MEMORY_POOL) || '{"diaries":[],"mood":""}');
 
-    const prompt = `[系统指令：生成角色手机动态数据]
-请严格按照你（${cfg.aiName}）的人设、所在城市（${phoneSettings.loc || '根据人设推断'}）以及下方的[近期记忆与聊天上下文]，生成你当前手机里的私密数据。
+    // 提取已有联系人名单，告诉 AI 优先在这些对话框里续写新消息
+    const existingContacts = (phoneData && phoneData.wechat && phoneData.wechat.chats)
+      ? phoneData.wechat.chats.map(c => `${c.name}(${c.role})`).join('、')
+      : '暂无';
+
+    const prompt = `[系统指令：续写角色手机最新动态]
+请严格按照你（${cfg.aiName}）的人设、所在城市（${phoneSettings.loc || '根据人设推断'}）以及下方的[近期记忆与聊天上下文]，生成你手机里【最新发生】的增量动态。
+【已有微信联系人】：${existingContacts}（请在输出微信对话时，优先沿用这些老联系人的名字续写新发生的对话，如剧情需要也可新增1位联系人）。
 必须输出【纯JSON格式】，绝对不要包裹在 \`\`\`json 中，直接输出 { 开始。
 数据结构要求：
 {
-  "lock": {"sender":"发件人名(如${cfg.userName})","time":"刚刚","text":"最新一条未读消息预览"},
+  "lock": {"sender":"${cfg.userName}","time":"刚刚","text":"最新消息预览"},
   "weather": {"desc":"晴/雨/雪","temp":"22°C","wind":"微风"},
-  "memos": ["第1条生活/工作防踩雷备忘","第2条","第3条"],
+  "memos": ["第1条今日优先守则","第2条","第3条"],
   "wechat": {
     "chats": [
       {
         "name": "联系人1(必须是${cfg.userName})", "avatar": "👩🏻‍🦰", "role": "老婆/备注",
-        "msgs": [{"me":false,"text":"她的原话或符合设定的语气"},{"me":true,"text":"你的回复"}...] // 8-12条连贯对话
-      } // 再生成3个符合人设的联系人(同事/损友/家人)，每个含6-8条对话
+        "msgs": [{"me":false,"text":"新对话1"},{"me":true,"text":"新回复2"}...] // 6-8条最新续写对话
+      } // 再生成2-3个联系人(沿用老熟人或新角色)，每个含4-6条最新续写对话
     ],
     "moments": [
-      {"author":"${cfg.userName}或其他人","avatar":"👩🏻‍🦰","time":"2小时前","content":"动态正文","img_desc":"[图片：描述画面]","actions":"你的点赞或评论"} // 共2条
+      {"author":"${cfg.userName}或其他人","avatar":"👩🏻‍🦰","time":"刚刚","content":"最新动态正文","img_desc":"[图片：描述画面]","actions":"你的点赞或评论"} // 1-2条新动态
     ],
-    "me": {"sign":"你的微信签名","balance":"$ 12,450.00","favs":["收藏1","收藏2","收藏3"]}
+    "me": {"sign":"你的微信签名","balance":"$ 12,450.00","favs":["新收藏1","新收藏2"]}
   },
   "xhs": [
-    {"title":"笔记标题","author":"博主名","likes":"1.2w","emoji":"🎮","cover_text":"封面大字","content":"笔记正文或你的心声"} // 4条
+    {"title":"新刷到的笔记标题","author":"博主名","likes":"1.2w","emoji":"🎮","cover_text":"封面大字","content":"笔记正文或你的心声"} // 2-4条新笔记
   ],
   "taobao": [
-    {"shop":"店铺名","status":"派送中","name":"实物商品名","spec":"规格","price":"$12","emoji":"📦","is_flash":false,"detail":"订单真实目的备注"} // 2条实物，2条外卖闪购(is_flash:true)
+    {"shop":"店铺名","status":"派送中","name":"新购商品名","spec":"规格","price":"$12","emoji":"📦","is_flash":false,"detail":"订单真实目的备注"} // 1-2条实物，1-2条外卖闪购(is_flash:true)
   ],
   "browser": [
-    {"query":"搜索关键词","time":"昨天 23:00","thought":"你搜这个的真实目的/心声"} // 4条
+    {"query":"新搜索关键词","time":"刚刚","thought":"你搜这个的真实目的/心声"} // 2-4条新搜索
   ],
   "notes": [
-    {"title":"备忘录标题","time":"10月25日","content":"详细正文内容..."} // 3条长备忘
+    {"title":"新备忘录标题","time":"刚刚","content":"详细正文内容..."} // 1-2条新备忘
   ]
 }
 【长期记忆】\n${memoryContext}
 【近期状态】\n${pool.mood}
-【最近20条聊天】\n${recentChat}`;
+【最近50条聊天】\n${recentChat}`;
 
     try {
       const reply = await callTacticalAPI([
         { role: 'system', content: cfg.systemPrompt || `你是 ${cfg.aiName}` },
         { role: 'user', content: prompt }
-      ], 'archive'); // 默认走档案模型省钱
+      ], 'archive');
 
       const jsonMatch = reply.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('解析 JSON 失败');
       
-      phoneData = JSON.parse(jsonMatch[0]);
+      const newParsed = JSON.parse(jsonMatch[0]);
+
+      // 1. 刷新前先把旧数据存成历史快照（最多保留最近5份）
+      if (phoneData) {
+        const snaps = JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || '[]');
+        const now = new Date();
+        const stamp = `${now.getMonth()+1}月${now.getDate()}日 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        snaps.unshift({ time: stamp, data: phoneData });
+        localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snaps.slice(0, 5)));
+      }
+
+      // 2. 合并新旧数据并保存
+      phoneData = mergePhoneData(phoneData, newParsed);
       localStorage.setItem(CACHE_KEY, JSON.stringify(phoneData));
+      isViewingSnapshot = false;
+      updateSnapshotUIState();
       renderPhoneData();
-      alert('✓ 手机信号已更新！');
+      alert('✓ 新动态已续写进手机，旧记录已保留并备份快照！');
     } catch (err) {
       alert('✕ 抓取失败: ' + err.message);
     } finally {
@@ -333,7 +448,6 @@
     });
     allHistory.sort((a, b) => (a.time || 0) - (b.time || 0));
 
-    // 从后往前找最新一条 user 发的消息
     const lastUserMsg = [...allHistory].reverse().find(m => m.role === 'user');
     const alertBox = document.getElementById('p-lock-alert-box');
     if (lastUserMsg && alertBox) {
