@@ -379,7 +379,8 @@
     // 只给 AI 喂真实的聊天记录，用于它严格复述
     const recentChat = allHistory.slice(-50).map(m => {
       const d = new Date(m.time || Date.now());
-      const timeTag = `[${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}]`;
+      // 强制只显示日期给 AI，不要时分
+      const timeTag = `[${d.getMonth()+1}月${d.getDate()}日]`;
       return `${timeTag} ${m.role === 'user' ? cfg.userName : cfg.aiName}: ${m.content.replace(/\[.*?\]/g, '')}`;
     }).join('\n');
 
@@ -400,8 +401,8 @@
 
 ⚠️ 【最高警告与时间线铁律】：
 1. 提取真实对话：在生成 ${cfg.userName} 的微信聊天记录时，必须且只能【一字不差地提取】底部提供的真实聊天记录，严禁自行脑补任何没发生过的对话内容！！
-2. 时间不可倒流：AI 最容易犯时间倒流的错误。你必须保证所有数组（如微信 msgs、淘宝、备忘录等）的时间线绝对符合【从过去到现在】的流逝逻辑！对话数组第一条时间最早，最后一条时间最晚！
-3. 时间范围：所有生成事件的时间必须小于或等于当前现实时间 ${nowTimeStr}。
+2. 时间不可倒流：AI 最容易犯时间倒流的错误。所有带有 time 字段的地方（如微信对话、备忘录、订单等），必须且只能填入【纯日期】（如“11月16日”或“昨天”），绝对不准带有具体时分！
+3. 时间范围：所有生成的日期必须小于或等于今天。
 
 必须输出【纯JSON格式】，绝对不要包裹在 \`\`\`json 中，直接输出 { 开始。
 数据结构要求：
@@ -413,11 +414,11 @@
     "chats": [
       {
         "name": "${cfg.userName}", "avatar": "👩🏻‍🦰", "role": "老婆/备注",
-        "msgs": [{"me":false,"time":"12:30","text":"（绝对摘抄自下方的真实记录）"},{"me":true,"time":"12:35","text":"（绝对摘抄自下方）"}...] 
-      } // 其他2-3个联系人(沿用名单：${existingContacts})，每个含4-6条最新续写对话，并附带time
+        "msgs": [{"me":false,"time":"11月15日","text":"（绝对摘抄自下方的真实记录）"},{"me":true,"time":"11月16日","text":"（绝对摘抄自下方）"}...] 
+      } // 其他2-3个联系人(沿用名单：${existingContacts})，每个含4-6条最新续写对话，time 必须是纯日期
     ],
     "moments": [
-      {"author":"${cfg.userName}或其他人","avatar":"👩🏻‍🦰","time":"刚刚","content":"最新动态正文","img_desc":"[图片：描述画面]","actions":"你的点赞或评论"}
+      {"author":"${cfg.userName}或其他人","avatar":"👩🏻‍🦰","time":"今天","content":"最新动态正文","img_desc":"[图片：描述画面]","actions":"你的点赞或评论"}
     ],
     "me": {"sign":"你的微信签名","balance":"$ 12,450.00","favs":["新收藏1","新收藏2"]}
   },
@@ -425,13 +426,13 @@
     {"title":"新刷到的笔记标题","author":"博主名","likes":"1.2w","emoji":"🎮","cover_text":"封面大字","content":"笔记正文或心声"}
   ],
   "taobao": [
-    {"shop":"店铺名","time":"12:30","status":"派送中","name":"新购商品名","spec":"规格","price":"$12","emoji":"📦","is_flash":false,"detail":"真实目的备注"}
+    {"shop":"店铺名","time":"11月16日","status":"派送中","name":"新购商品名","spec":"规格","price":"$12","emoji":"📦","is_flash":false,"detail":"真实目的备注"}
   ],
   "browser": [
-    {"query":"新搜索关键词","time":"刚刚","thought":"你搜这个的真实目的/心声"}
+    {"query":"新搜索关键词","time":"昨天","thought":"你搜这个的真实目的/心声"}
   ],
   "notes": [
-    {"title":"新备忘录标题","time":"10:00","content":"详细正文内容..."}
+    {"title":"新备忘录标题","time":"11月16日","content":"详细正文内容..."}
   ]
 }
 【近期状态】\n${pool.mood}
