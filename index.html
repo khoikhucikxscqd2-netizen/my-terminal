@@ -16,7 +16,7 @@
   <header class="top-bar">
     <div class="terminal-brand">
       <span class="status-dot" id="conn-dot"></span>
-      <span class="brand-title">TAC-LINK // TERMINAL-OS v1.5</span>
+      <span class="brand-title">TAC-LINK v1.5</span>
     </div>
     <div class="terminal-metrics">
       <span class="metric-item" id="global-music-ticker" style="display:none; color: var(--accent-amber); max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="点击打开点唱机">🎵 暂无播放</span>
@@ -339,7 +339,7 @@
     <div class="tac-modal">
       <div class="panel-header modal-header">
         <span class="panel-tag">[SYS-CFG]</span>
-        <h2>终端核心配置 // SYSTEM OVERRIDE</h2>
+        <h2>终端核心配置</h2>
         <button class="close-btn" id="close-settings-btn">✕</button>
       </div>
       
@@ -389,7 +389,7 @@
 
         <div id="tab-theme" class="tab-content">
           <div class="form-group">
-            <label>终端视觉主题预设 (Theme Presets)</label>
+            <label>终端视觉主题预设</label>
             <small style="margin-bottom: 10px;">切换主题将实时改变全局色调、边框结构与背景底纹。</small>
             
             <div class="theme-grid" id="theme-selector-grid">
@@ -444,53 +444,53 @@
 
         <div id="tab-system" class="tab-content">
           <div class="form-group">
-            <label>API 主机地址 (API Host)</label>
+            <label>API 主机地址</label>
             <input type="text" id="cfg-api-host" placeholder="例如: https://.../v1">
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>API 秘钥 (API Key)</label>
+              <label>API 秘钥</label>
               <input type="password" id="cfg-api-key" placeholder="填入访问密码">
             </div>
             <div class="form-group">
-              <label>全局记忆上限 (Max Tokens)</label>
+              <label>全局记忆上限</label>
               <input type="number" id="cfg-max-tokens" value="100000" step="5000">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group" style="gap: 8px;">
               <div>
-                <label>① 聊天模型 (Chat // 核心对话)</label>
+                <label>① 聊天模型 (核心对话)</label>
                 <div style="display: flex; gap: 6px; margin-top: 4px;">
                   <select id="cfg-model" style="flex: 1; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-dim); padding: 6px;"></select>
                   <button class="tac-btn" id="fetch-models-btn" title="检索全部可用模型">📡 检索</button>
                 </div>
               </div>
               <div>
-                <label>② 档案共读模型 (日记 / 书库 / 信箱)</label>
+                <label>② 档案共读模型 (日记/书库/信箱)</label>
                 <select id="cfg-model-archive" style="margin-top: 4px; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-dim); padding: 6px;"></select>
               </div>
               <div>
-                <label>③ 日常任务模型 (Daily 情绪与任务)</label>
+                <label>③ 日常任务模型 (情绪与任务)</label>
                 <select id="cfg-model-daily" style="margin-top: 4px; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-dim); padding: 6px;"></select>
               </div>
             </div>
             <div class="form-group">
-              <label>主动通讯策略 (Proactive)</label>
+              <label>主动通讯策略</label>
               <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.02); padding: 8px; border: 1px dashed var(--border-dim); height: 100%; justify-content: center;">
                 <select id="cfg-proactive" style="width: 100%;">
                   <option value="on">开启自动监测</option>
                   <option value="off">静默模式</option>
                 </select>
                 <div style="display: flex; gap: 8px;">
-                  <div style="flex: 1;"><small>每日上限(次)</small><input type="number" id="cfg-proactive-max" placeholder="5" style="padding: 4px;"></div>
+                  <div style="flex: 1;"><small>日上限(次)</small><input type="number" id="cfg-proactive-max" placeholder="5" style="padding: 4px;"></div>
                   <div style="flex: 1;"><small>间隔(分钟)</small><input type="text" id="cfg-proactive-interval" placeholder="15-45" style="padding: 4px;"></div>
                 </div>
               </div>
             </div>
           </div>
           <div class="form-group" style="margin-top: 8px; padding-top: 12px; border-top: 1px dashed var(--border-dim);">
-            <label>☁️ 云端同步与本地备份 (Sync & Backup)</label>
+            <label>☁️ 云端同步与本地备份</label>
             <div style="display: flex; gap: 8px; margin-top: 4px; margin-bottom: 8px;">
               <input type="password" id="cfg-sync-secret" placeholder="输入专属暗号(如: AGGY_99)" style="flex: 1; border-color: var(--accent-amber);">
               <button class="tac-btn primary" id="cloud-pull-btn" title="输入暗号后点击，从云端拉取恢复数据">📥 从云拉取</button>
