@@ -47,8 +47,13 @@ async function triggerCloudPush() {
   const payload = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    // 把 Terminal_ 开头的书库和书摘也加入云端打包名单
-    if (key && (key.startsWith('ezekiel_') || key.startsWith('Terminal_'))) {
+    // 终极保护网：涵盖所有扩展模块的存储键
+    if (key && (
+      key.startsWith('ezekiel_') || 
+      key.startsWith('Terminal_') || 
+      key === 'time_capsules_data' ||
+      key.includes('capsule')
+    )) {
       payload[key] = localStorage.getItem(key);
     }
   }
@@ -91,7 +96,7 @@ async function pullFromCloud(secretCode, statusBtn) {
     if (data && data.length > 0 && data[0].payload) {
       const cloudData = data[0].payload;
       for (const key in cloudData) {
-        if (key.startsWith('ezekiel_') || key.startsWith('Terminal_')) {
+        if (key.startsWith('ezekiel_') || key.startsWith('Terminal_') || key === 'time_capsules_data' || key.includes('capsule')) {
           localStorage.setItem(key, cloudData[key]);
         }
       }
@@ -120,8 +125,13 @@ const originalSetItem = localStorage.setItem;
 let pushTimeout = null;
 localStorage.setItem = function(key, value) {
   originalSetItem.apply(this, arguments);
-  // 如果存的是咱们的数据，延迟2秒打包推送（防频繁点击卡顿）
-  if (key.startsWith('ezekiel_') && getConfig().syncSecret) {
+  // 如果存的是咱们的数据，延迟2秒打包推送（涵盖扩展模块）
+  if (getConfig().syncSecret && (
+    key.startsWith('ezekiel_') || 
+    key.startsWith('Terminal_') || 
+    key === 'time_capsules_data' ||
+    key.includes('capsule')
+  )) {
     clearTimeout(pushTimeout);
     pushTimeout = setTimeout(() => triggerCloudPush(), 2000);
   }
