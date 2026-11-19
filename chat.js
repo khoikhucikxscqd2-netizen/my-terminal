@@ -15,6 +15,7 @@ let proactiveTimer = null;
 let lastUserActivity = Date.now();
 let isGenerating = false;
 let currentQuote = null; // 记录当前正在引用的文本
+let pendingAttachment = null; // 暂存待发送的表情包或图片: { type: 'sticker'|'image', base64, tagText?, label }
 
 ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
   document.addEventListener(evt, () => { lastUserActivity = Date.now(); }, { passive: true });
@@ -137,6 +138,49 @@ function deleteBubble(bubbleEl, rawContent, timestamp, role) {
     }
     localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(history));
     updateTopBarMetrics();
+  }
+}
+// 🌟 撤回角色该次发出的整段消息
+function deleteTurnBlock(wrapperEl, timestamp, role) {
+  if (!confirm('确认撤回该次发出的整段回复？')) return;
+  wrapperEl.remove();
+
+  const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
+  const targetIndex = history.findIndex(m => m.time === timestamp && m.role === role);
+  if (targetIndex !== -1) {
+    history.splice(targetIndex, 1);
+    localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(history));
+    updateTopBarMetrics();
+  }
+}
+
+// 🌟 用户气泡重新发送功能
+function resendUserMessage(rawContent, timestamp) {
+  if (isGenerating) return alert('当前正在接收信号，请稍后再试。');
+
+  const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
+  const targetMsg = history.find(m => m.time === timestamp && m.role === 'user');
+
+  // 1. 如果是本地图片消息
+  if (targetMsg && targetMsg.localImage) {
+    const cleanText = targetMsg.content === '[发送了一张图片]' ? null : targetMsg.content;
+    sendUserChatMessage(cleanText, targetMsg.localImage);
+    return;
+  }
+
+  // 2. 如果是纯表情包或文字+表情包混合消息
+  const stickerMatch = rawContent.match(/\[表情包:\s*([^\|]+)\s*\|\s*id:([^\]]+)\]/);
+  if (stickerMatch) {
+    const stickers = JSON.parse(localStorage.getItem(STICKERS_KEY) || '[]');
+    const s = stickers.find(x => x.id === stickerMatch[2].trim());
+    sendUserChatMessage(rawContent, s ? s.img : null);
+    return;
+  }
+
+  // 3. 普通文本消息（剥离历史引用框前缀后重新发送）
+  const cleanText = rawContent.replace(/\[QUOTE:[\s\S]*?\]\n?/g, '').trim();
+  if (cleanText) {
+    sendUserChatMessage(cleanText, null);
   }
 }
 
@@ -265,11 +309,26 @@ function appendMessageBubble(role, content, timestamp = Date.now(), isProactive 
       delBtn.className = 'action-btn';
       delBtn.innerHTML = '🗑️ 撤回';
       delBtn.onclick = (e) => { e.stopPropagation(); deleteBubble(container, partContent, timestamp, role); };
-      
+
       actionsBar.appendChild(quoteBtn);
-      // 只有 AI 发的消息才会长出读心术按钮
-      if (role === 'assistant') actionsBar.appendChild(peekBtn);
-      actionsBar.appendChild(delBtn);
+
+      if (role === 'user') {
+        const resendBtn = document.createElement('button');
+        resendBtn.className = 'action-btn';
+        resendBtn.innerHTML = '🔄 重发';
+        resendBtn.onclick = (e) => { e.stopPropagation(); resendUserMessage(content, timestamp); };
+        actionsBar.appendChild(resendBtn);
+        actionsBar.appendChild(delBtn);
+      } else {
+        actionsBar.appendChild(peekBtn);
+        actionsBar.appendChild(delBtn);
+
+        const delTurnBtn = document.createElement('button');
+        delTurnBtn.className = 'action-btn';
+        delTurnBtn.innerHTML = '💥 撤回整段';
+        delTurnBtn.onclick = (e) => { e.stopPropagation(); deleteTurnBlock(wrapper, timestamp, role); };
+        actionsBar.appendChild(delTurnBtn);
+      }
       
       container.appendChild(actionsBar);
 
@@ -330,6 +389,27 @@ function renderAllChatHistory() {
   }
 }
 
+function setPendingAttachment(att) {
+  pendingAttachment = att;
+  const bar = document.getElementById('attachment-preview-bar');
+  const img = document.getElementById('attachment-preview-img');
+  const label = document.getElementById('attachment-preview-label');
+  if (!bar || !img || !label) return;
+
+  if (att) {
+    img.src = att.base64;
+    label.textContent = att.label;
+    bar.classList.add('active');
+  } else {
+    img.src = '';
+    bar.classList.remove('active');
+  }
+}
+
+document.getElementById('cancel-attachment-btn')?.addEventListener('click', () => {
+  setPendingAttachment(null);
+});
+
 document.getElementById('cancel-quote-btn')?.addEventListener('click', () => {
   currentQuote = null;
   document.getElementById('quote-preview-bar').classList.remove('active');
@@ -338,10 +418,23 @@ document.getElementById('cancel-quote-btn')?.addEventListener('click', () => {
 async function sendUserChatMessage(customText = null, imageBase64 = null) {
   if (isGenerating) return;
   const inputEl = document.getElementById('quick-test-input');
-  const text = customText || inputEl.value.trim();
-  if (!text && !imageBase64) return;
+  let text = customText !== null ? customText : inputEl.value.trim();
+  let finalImageBase64 = imageBase64;
+  let isStickerMode = customText?.includes('[表情包:') || false;
 
-  if (!customText) {
+  // 如果是通过输入框点击发送，自动合并当前暂存的附件（表情包或照片）
+  if (customText === null && pendingAttachment) {
+    finalImageBase64 = pendingAttachment.base64;
+    if (pendingAttachment.type === 'sticker') {
+      isStickerMode = true;
+      text = text ? `${text}\n${pendingAttachment.tagText}` : pendingAttachment.tagText;
+    }
+    setPendingAttachment(null);
+  }
+
+  if (!text && !finalImageBase64) return;
+
+  if (customText === null) {
     inputEl.value = '';
     inputEl.style.height = 'auto';
   }
@@ -350,10 +443,9 @@ async function sendUserChatMessage(customText = null, imageBase64 = null) {
 
   const now = Date.now();
   
-  let quotePrefix = '';
   let quoteDisplayPrefix = '';
   let systemHint = '';
-  if (currentQuote && !imageBase64) {
+  if (currentQuote) {
     quoteDisplayPrefix = `[QUOTE: ${currentQuote.name}：${currentQuote.text}]\n`;
     systemHint = `\n（注：针对我刚才那句“${currentQuote.text}”，我特别回复了以上内容，请结合语境回应。）`;
     currentQuote = null;
@@ -361,21 +453,21 @@ async function sendUserChatMessage(customText = null, imageBase64 = null) {
   }
   
   let displayContent = text;
-  if (imageBase64 && !customText?.includes('[表情包:')) {
-    displayContent = text ? `${text}\n[LOCAL_IMG:${imageBase64}]` : `[LOCAL_IMG:${imageBase64}]`;
-  } else if (quoteDisplayPrefix) {
-    displayContent = quoteDisplayPrefix + text;
+  if (finalImageBase64 && !isStickerMode) {
+    displayContent = text ? `${text}\n[LOCAL_IMG:${finalImageBase64}]` : `[LOCAL_IMG:${finalImageBase64}]`;
+  }
+  if (quoteDisplayPrefix) {
+    displayContent = quoteDisplayPrefix + displayContent;
   }
 
   appendMessageBubble('user', displayContent, now, false, true);
 
   const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY) || '[]');
-  let contentForHistory = displayContent;
-  if (imageBase64 && !customText?.includes('[表情包:')) {
-    contentForHistory = text || '[发送了一张图片]';
-    history.push({ role: 'user', content: contentForHistory, time: now, localImage: imageBase64 });
+  if (finalImageBase64 && !isStickerMode) {
+    const contentForHistory = (quoteDisplayPrefix + (text || '[发送了一张图片]')).trim();
+    history.push({ role: 'user', content: contentForHistory, time: now, localImage: finalImageBase64 });
   } else {
-    history.push({ role: 'user', content: contentForHistory, time: now });
+    history.push({ role: 'user', content: displayContent, time: now });
   }
   localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(history));
   updateTopBarMetrics();
@@ -384,12 +476,12 @@ async function sendUserChatMessage(customText = null, imageBase64 = null) {
   const chatBox = document.getElementById('chat-messages');
 
   try {
-    const { messages } = buildContextPayload('', imageBase64);
+    const { messages } = buildContextPayload('', finalImageBase64);
     
     let invisibleRules = `\n\n${CHAT_STYLE_RULE}`;
     if (systemHint) invisibleRules += systemHint;
 
-if (Math.random() < 0.25) {
+    if (Math.random() < 0.25) {
       invisibleRules += `\n（隐形指令：如果当下的语境适合，可在回复末尾另起一行附带一个符合你心情或物品的 24x24 像素画。必须严格使用 [SKETCH: 换行后24行纯由数字0和1组成的矩阵，0代表空白背景，1代表发光像素点，每行必须严格24个数字，最后以 ] 结尾] 的格式输出。严禁使用文字描述代替，也绝不在回复正文里提及此指令。）`;
     }
     
@@ -410,7 +502,6 @@ if (Math.random() < 0.25) {
       chatBox.scrollTop = chatBox.scrollHeight;
     });
 
-    const contentCol = aiBubble.parentElement.parentElement;
     aiBubble.parentElement.remove();
     const parts = splitIntoBubbles(fullReply);
     parts.forEach(part => {
@@ -422,14 +513,13 @@ if (Math.random() < 0.25) {
     localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(updatedHistory));
     updateTopBarMetrics();
     
-    // 🌟 新增：每次 AI 回复完，刷新游标进度，如果满 5w 就后台偷偷归档
+    // 每次 AI 回复完，刷新游标进度，如果满 5w 就后台偷偷归档
     if (typeof checkMemoryWatermark === 'function') {
-       const { tokenCount } = checkMemoryWatermark();
-       if (tokenCount >= 50000 && typeof triggerMemorySummary === 'function') {
-           triggerMemorySummary(); 
-       }
+      const { tokenCount } = checkMemoryWatermark();
+      if (tokenCount >= 50000 && typeof triggerMemorySummary === 'function') {
+        triggerMemorySummary(); 
+      }
     }
-  
 
     // 硬刷新一下，防止 DOM 错乱
     renderAllChatHistory();
@@ -544,11 +634,18 @@ function setupStickerPanel() {
       const img = document.createElement('img');
       img.className = 'sticker-item';
       img.src = s.img;
-      img.title = `发送: ${s.name}`;
+      img.title = `选择表情: ${s.name}`;
       
+      // 点击表情包后挂起等待发送，支持继续输入文字一起发出
       img.addEventListener('click', () => {
         panel.classList.remove('active');
-        sendUserChatMessage(`[表情包: ${s.name} | id:${s.id}]`, s.img);
+        setPendingAttachment({
+          type: 'sticker',
+          base64: s.img,
+          tagText: `[表情包: ${s.name} | id:${s.id}]`,
+          label: `表情包：${s.name}（可继续打字或直接点发送）`
+        });
+        document.getElementById('quick-test-input')?.focus();
       });
 
       const del = document.createElement('button');
@@ -633,11 +730,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Enter') {
         const isMobile = window.innerWidth <= 820 || ('ontouchstart' in window && navigator.maxTouchPoints > 0);
         if (isMobile) {
-          // 手机端：允许默认回车换行，点发送按钮才发送
           setTimeout(autoResizeInput, 0);
           return;
         }
-        // 电脑端：Shift+Enter 换行，单独按 Enter 直接发送
         if (!e.shiftKey) {
           e.preventDefault();
           sendUserChatMessage();
@@ -659,7 +754,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     const channelName = document.getElementById('current-chat-title')?.textContent.replace(/[\/\\\s]/g, '_') || 'MAIN';
-    a.download = `${aiLabel}_${channelName}_${new Date().toISOString().slice(0, 10)}.json`;    a.click();
+    a.download = `${aiLabel}_${channelName}_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
   });
   document.getElementById('clear-chat-btn')?.addEventListener('click', () => {
     if (confirm('确认清空当前所有本地聊天记录？')) {
@@ -697,11 +793,13 @@ document.addEventListener('DOMContentLoaded', () => {
           
           const base64 = canvas.toDataURL('image/jpeg', 0.8);
           
-          const inputEl = document.getElementById('quick-test-input');
-          const text = inputEl.value.trim();
-          inputEl.value = ''; 
-          
-          sendUserChatMessage(text || null, base64);
+          // 统一逻辑：选择图片后先挂起预览，可继续打字或直接点发送
+          setPendingAttachment({
+            type: 'image',
+            base64: base64,
+            label: `图片：${file.name}（可继续打字或直接点发送）`
+          });
+          document.getElementById('quick-test-input')?.focus();
         };
         img.src = event.target.result;
       };

@@ -534,3 +534,35 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   });
 });
+// ==========================================
+// 阅读器字号无级调节与记忆 (A- / A+)
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+  const header = document.querySelector('#immersive-reader-modal .modal-header');
+  const closeBtn = document.getElementById('close-reader-btn');
+  const textBox = document.getElementById('reader-text-box');
+  if (!header || !closeBtn || !textBox) return;
+
+  let fontSize = Number(localStorage.getItem('terminal_reader_font_size')) || 16;
+  textBox.style.fontSize = fontSize + 'px';
+
+  const ctrlBox = document.createElement('div');
+  ctrlBox.className = 'reader-font-controls';
+  ctrlBox.innerHTML = `
+    <button class="mini-btn" id="reader-font-dec" title="缩小字号">A-</button>
+    <button class="mini-btn" id="reader-font-inc" title="放大字号">A+</button>
+  `;
+  header.insertBefore(ctrlBox, closeBtn);
+
+  document.getElementById('reader-font-dec').addEventListener('click', () => {
+    fontSize = Math.max(12, fontSize - 1);
+    textBox.style.fontSize = fontSize + 'px';
+    localStorage.setItem('terminal_reader_font_size', fontSize);
+  });
+
+  document.getElementById('reader-font-inc').addEventListener('click', () => {
+    fontSize = Math.min(26, fontSize + 1);
+    textBox.style.fontSize = fontSize + 'px';
+    localStorage.setItem('terminal_reader_font_size', fontSize);
+  });
+});

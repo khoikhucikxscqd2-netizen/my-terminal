@@ -406,3 +406,39 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-amber); }
     max-height: 76dvh !important;
   }
 }
+/* ==========================================
+   待发送附件（表情包 / 图片）暂存预览条样式
+   ========================================== */
+.attachment-preview-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px dashed var(--accent-amber);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+}
+.attachment-preview-bar.active {
+  display: flex;
+}
+.attachment-preview-bar img {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--border-bright);
+  flex-shrink: 0;
+}
+.attachment-preview-label {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-theme="forest-cottage"] .attachment-preview-bar,
+[data-theme="cloud-puppy"] .attachment-preview-bar {
+  background: rgba(255, 255, 255, 0.55);
+}
