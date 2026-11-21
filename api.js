@@ -192,7 +192,7 @@ function buildContextPayload(newUserText = '', imageBase64 = null, audioPayload 
   let coreSystemContent = `[核心人设指令]\n${cfg.systemPrompt || '未设置人设'}\n`;
   coreSystemContent += `\n[当前现实时间]\n${timeStr}\n`; // 强制把时间刻进模型的潜意识
   if (memoryPool.mood) coreSystemContent += `\n[当前双方情绪板]\n${memoryPool.mood}\n`;
-  if (memoryPool.diaries.length > 0) coreSystemContent += `\n[近期日记档案摘要]\n${memoryPool.diaries.slice(-15).join('\n')}\n`;
+  if (memoryPool.diaries.length > 0) coreSystemContent += `\n[近期日记档案（含最近3篇完整正文）]\n${memoryPool.diaries.slice(-20).join('\n')}\n`;
   if (memoryPool.readingNotes.length > 0) coreSystemContent += `\n[共同阅读书摘体会]\n${memoryPool.readingNotes.slice(-10).join('\n')}\n`;
   if (typeof getInjectableMemories === 'function') {
     const longTermMems = getInjectableMemories();

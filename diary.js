@@ -19,9 +19,17 @@ function saveDiaryArchives(list) {
 function syncDiariesToMemoryPool(list) {
   const pool = JSON.parse(localStorage.getItem(STORAGE_KEYS.MEMORY_POOL) || '{"diaries":[],"readingNotes":[],"mood":""}');
   
-  // 按时间正序（从旧到新）取最近 20 篇日记的精简摘要存入长期记忆池
-  const chronological = [...list].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-  pool.diaries = chronological.slice(-20).map(d => `[${d.displayDate}] ${d.summary}`);
+  // 按时间正序（从旧到新）取最近 20 篇日记
+  const chronological = [...list].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).slice(-20);
+  const splitIdx = Math.max(0, chronological.length - 3);
+
+  // 较早的日记保留一句话摘要，最近 3 篇附上完整正文
+  pool.diaries = chronological.map((d, idx) => {
+    if (idx >= splitIdx) {
+      return `[${d.displayDate} 完整日记] 摘要：${d.summary}\n正文：${d.content}`;
+    }
+    return `[${d.displayDate} 摘要] ${d.summary}`;
+  });
   
   localStorage.setItem(STORAGE_KEYS.MEMORY_POOL, JSON.stringify(pool));
   if (typeof updateTopBarMetrics === 'function') updateTopBarMetrics();

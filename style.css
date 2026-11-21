@@ -362,7 +362,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent-amber); }
   /* 6. 其他独立面板排版 */
   .tac-panel:not(#panel-chat) { height: auto !important; min-height: auto !important; overflow: visible !important; }
   #panel-mood .panel-body, #panel-tasks .panel-body { overflow: visible !important; height: auto !important; flex: none !important; }
-  #panel-diary .panel-body { max-height: 270px !important; overflow-y: auto !important; height: auto !important; flex: none !important; }
+  #panel-diary.mobile-active { height: 100% !important; display: flex !important; flex-direction: column !important; }
+  #panel-diary .panel-body { flex: 1 !important; max-height: none !important; height: auto !important; overflow-y: auto !important; padding-bottom: calc(70px + env(safe-area-inset-bottom)) !important; }
 
   .sub-grid.mobile-active-combo { display: flex !important; flex-direction: column !important; height: 100% !important; position: absolute; inset: 0; }
   .sub-grid.mobile-active-combo #panel-mood, .sub-grid.mobile-active-combo #panel-tasks { display: flex !important; position: relative; flex: none !important; height: auto !important; border: 1px solid var(--border-dim) !important; border-radius: 4px !important; margin: 8px; }
