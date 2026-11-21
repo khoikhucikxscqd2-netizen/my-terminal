@@ -257,6 +257,7 @@
       document.getElementById('p-gen-body').innerHTML = `
         <div style="padding:16px;">
           ${isViewingSnapshot ? `<button style="width:100%; padding:10px; background:#ff5252; border:none; color:#fff; border-radius:8px; margin-bottom:16px; font-weight:bold; cursor:pointer;" onclick="pRestoreLatest()">🔙 当前正在查看旧快照，点击切回最新</button>` : ''}
+          <button style="width:100%; padding:10px; background:#2b323b; border:1px solid #1890ff; color:#1890ff; border-radius:10px; margin-bottom:14px; font-weight:bold; font-size:13px; cursor:pointer;" onclick="pOpenGuide()">📖 小手机使用说明与容量规则</button>
           <div style="background:#22252a; padding:14px; border-radius:12px; margin-bottom:14px;">
             <p style="color:#aaa; font-size:12px; margin-bottom:6px;">修改锁屏密码 (当前: ${phoneSettings.pin})</p>
             <input type="text" id="p-set-pin" maxlength="4" placeholder="输入4位数字" style="width:100%; padding:8px; background:#111215; border:1px solid #333; color:#fff; border-radius:6px;">
@@ -282,6 +283,43 @@
     }
   };
   window.pCloseApp = function(id) { document.getElementById('p-app-' + id).classList.remove('active'); };
+// 新增：小手机内置使用说明书
+  window.pOpenGuide = function() {
+    const guideHTML = `
+      <div style="font-size:12.5px; line-height:1.7; color:#ddd;">
+        <div style="background:#1e2126; padding:12px; border-radius:10px; margin-bottom:12px; border-left:3px solid #1890ff;">
+          <b style="color:#fff; font-size:13px;">🔑 1. 基础操作与解锁</b><br>
+          • <b>初始密码</b>：默认 <code style="color:#1890ff;">0000</code>（可在设置中修改为任意4位数字，点右下角「解锁」可直接跳过）。<br>
+          • <b>锁屏通知</b>：自动同步你在终端发出的最新一句话（零 Token 消耗）。<br>
+          • <b>刷新动态</b>：点击主屏右上角「↻ 刷新」，会读取全频道最近 <b>50 条</b> 聊天记录及当前情绪板，续写最新动态（走「② 档案共读模型」通道）。
+        </div>
+
+        <div style="background:#1e2126; padding:12px; border-radius:10px; margin-bottom:12px; border-left:3px solid #07c160;">
+          <b style="color:#fff; font-size:13px;">📊 2. 每次刷新与最大储存上限</b><br>
+          每次刷新采用<b>增量合并</b>，新内容排在最前，超出上限自动淘汰最旧记录：<br>
+          • <b>💬 微信聊天</b>：每次续写 2~3 位联系人（每人 <b>4~6 条</b>新消息）；最多存 <b>8 个</b>联系人，每人上限 <b>30 条</b>对话。<br>
+          • <b>🧭 朋友圈</b>：最多储存 <b>12 条</b>动态。<br>
+          • <b>📕 小红书</b>：最多储存 <b>16 条</b>浏览笔记。<br>
+          • <b>🛍️ 淘宝/外卖</b>：最多储存 <b>15 条</b>订单（点击卡片可查看真实购买目的备注）。<br>
+          • <b>🧭 浏览器</b>：最多储存 <b>15 条</b>搜索记录与心声。<br>
+          • <b>📝 备忘录</b>：最多储存 <b>12 条</b>随手记。
+        </div>
+
+        <div style="background:#1e2126; padding:12px; border-radius:10px; margin-bottom:12px; border-left:3px solid #e0a96d;">
+          <b style="color:#fff; font-size:13px;">🕰️ 3. 历史快照与收藏机制</b><br>
+          • 每次点「↻ 刷新」前，旧数据会自动打包存为一份快照。<br>
+          • 普通快照最多保留最新 <b>5 份</b>，超出自动顶掉最早的；点击 <b>「☆ 收藏」</b> 标星后将<b>永久保留</b>，不占 5 份名额。
+        </div>
+
+        <div style="background:#1e2126; padding:12px; border-radius:10px; border-left:3px solid #ff7875;">
+          <b style="color:#fff; font-size:13px;">🖼️ 4. 私密相册与云同步说明</b><br>
+          • 相册最多存 <b>20 张</b>本地图片（自动高清压缩，每次打开手机随机抽 1 张作锁屏与主屏壁纸）。<br>
+          • 相册图片为节省云端空间<b>仅存当前设备本地</b>；其余所有聊天、App 记录、快照与密码设置均支持随终端一键云端同步。
+        </div>
+      </div>
+    `;
+    pOpenDtl('📖 小手机使用说明', guideHTML);
+  };
 
   // 新增：切换快照收藏状态
   window.pToggleStarSnapshot = function(idx) {
